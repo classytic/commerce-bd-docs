@@ -1,0 +1,44 @@
+{
+  "module": "accounting",
+  "title": "Accounting Guides",
+  "subtitle": "Double-entry ledger with accrual-correct A/P and A/R for Bangladesh BFRS",
+  "pages": [
+    {
+      "slug": "getting-started",
+      "title": "Getting Started",
+      "description": "One-time setup: seed chart of accounts, opening balances, fiscal periods, credit terms",
+      "order": 1
+    },
+    {
+      "slug": "daily-operations",
+      "title": "Daily Operations",
+      "description": "Day close, vendor bills, supplier payments, credit-sale invoices, customer receipts",
+      "order": 2
+    },
+    {
+      "slug": "credit-debit-notes",
+      "title": "Credit & Debit Notes",
+      "description": "Returns, allowances, and adjustments with full audit trail",
+      "order": 3
+    },
+    {
+      "slug": "reports",
+      "title": "Reports & Analysis",
+      "description": "A/P aging, A/R aging, partner statements, trial balance, financial statements",
+      "order": 4
+    },
+    {
+      "slug": "settlement-model",
+      "title": "How Settlement Works",
+      "description": "Group-settle mechanics, partial payments, automatic matching at zero balance",
+      "order": 5
+    },
+    {
+      "slug": "permissions",
+      "title": "Roles & Permissions",
+      "description": "Who can post bills, record payments, issue credit notes, and view reports",
+      "order": 6
+    }
+  ],
+  "updatedAt": "2026-04-08T00:00:00Z"
+}
