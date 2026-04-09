@@ -1,0 +1,62 @@
+{
+  "module": "inventory",
+  "title": "Inventory & Warehouse Guides",
+  "subtitle": "Manage stock across branches, warehouses, and fulfillment centers",
+  "pages": [
+    {
+      "slug": "getting-started",
+      "title": "Getting Started",
+      "description": "First-time setup: branches, warehouses, locations, and your first stock entry",
+      "order": 1
+    },
+    {
+      "slug": "daily-stock",
+      "title": "Daily Stock Management",
+      "description": "Check stock, make adjustments, handle low stock alerts, and barcode scanning",
+      "order": 2
+    },
+    {
+      "slug": "purchases-receiving",
+      "title": "Purchases & Receiving",
+      "description": "Create purchase orders, receive goods, and track supplier deliveries",
+      "order": 3
+    },
+    {
+      "slug": "transfers",
+      "title": "Branch Transfers",
+      "description": "Move stock between branches: create, approve, dispatch, and receive transfers",
+      "order": 4
+    },
+    {
+      "slug": "lots-packages",
+      "title": "Lots, Serials & Packages",
+      "description": "Track batches, serial numbers, and pack items into boxes and pallets",
+      "order": 5
+    },
+    {
+      "slug": "quality-inspection",
+      "title": "Quality Inspection",
+      "description": "Set up inspection rules, record check results, and handle pass/fail dispositions",
+      "order": 6
+    },
+    {
+      "slug": "warehouse-tasks",
+      "title": "Warehouse Tasks & Scanning",
+      "description": "Use scanner-directed picking, putaway, and counting for your warehouse team",
+      "order": 7
+    },
+    {
+      "slug": "reports",
+      "title": "Inventory Reports",
+      "description": "Stock aging, turnover analysis, availability matrix, and warehouse health",
+      "order": 8
+    },
+    {
+      "slug": "permissions",
+      "title": "Roles & Permissions",
+      "description": "Who can view stock, make purchases, approve transfers, and manage the warehouse",
+      "order": 9
+    }
+  ],
+  "updatedAt": "2026-04-09T00:00:00Z"
+}
