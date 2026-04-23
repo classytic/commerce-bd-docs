@@ -1,0 +1,130 @@
+# Payment Verification
+
+Manual payments (bKash, Nagad, Rocket, bank transfer, cash at counter) don't settle themselves — an admin has to confirm the money actually arrived before the order is treated as paid. This page walks through that review.
+
+---
+
+## What needs verification
+
+Every payment created via a **manual gateway** lands in **Pending** status:
+
+- bKash / Nagad / Rocket (MFS) — customer sends to your merchant number, quotes a trxID
+- Bank transfer — customer deposits to your account, attaches a slip
+- Cash at counter — counter staff enters the payment, manager signs off
+
+Gateway payments (SSLCommerz, Stripe, card checkout) skip this — the gateway confirms receipt automatically, so those land as **Verified** on creation.
+
+---
+
+## Review queue
+
+Every order with a pending payment shows a yellow **Payment Verification Required** banner on its detail page:
+
+```
+⚠ Payment Verification Required
+   This payment is pending verification. Review and take action.
+   [Reject]  [Verify Payment]
+```
+
+Click **Verify Payment** to approve, or **Reject** to decline.
+
+---
+
+## Before you verify
+
+Check the payment details panel. For MFS:
+
+| Check | What to look for |
+|---|---|
+| **Wallet number** | Matches your merchant number |
+| **Transaction reference** | Valid bKash/Nagad trxID format |
+| **Amount** | Exactly matches the order total |
+| **Timestamp** | Recent (not reused from an old order) |
+
+For bank transfers:
+
+| Check | What to look for |
+|---|---|
+| **Bank name + account number** | Matches an account you own |
+| **Branch** | Sensible for the customer's region |
+| **Slip image** | Uploaded, legible, dated |
+
+Your most reliable check is the bKash / Nagad merchant app or bank statement — cross-reference the trxID there before approving.
+
+---
+
+## Verify
+
+1. Confirm the money is in your account
+2. Click **Verify Payment**
+3. Confirm the dialog
+
+The system marks the transaction `verified`, sets `verifiedAt` and `verifiedBy` (your user), and transitions the order's payment state from `pending` to `paid`. Downstream: the order becomes confirmable, fulfillment can proceed.
+
+> Once verified, the order can move forward — if the customer later disputes, use [Issue Refund](/accounting/order-refunds), not a re-verification reversal.
+
+---
+
+## Reject
+
+Use Reject if:
+
+- The trxID is fake, reused, or doesn't appear in your merchant app
+- The amount is short and the customer won't top up
+- The deposit slip is illegible or points to an account that isn't yours
+- The customer changed their mind before verification and asked to cancel
+
+Enter a **Rejection Reason** (shown on the order and in the audit trail). On submit:
+
+- Transaction status → `failed`
+- Order payment state → remains pending (awaiting a new payment attempt) or moves to `failed` depending on the FSM
+- The customer is notified (if notifications are configured for this payment method)
+
+> Rejecting is reversible only by the admin role. Double-check before clicking — an incorrectly rejected bKash payment frustrates customers who genuinely paid.
+
+---
+
+## Accounting side
+
+Verification itself does NOT post to the books — money landed in your bank the moment it was transferred, regardless of when you click "verify." What the verification does is **tie that money to a specific order** so A/R for that order clears.
+
+The accounting entries depend on the payment method:
+
+| Method | On verify, posts |
+|---|---|
+| bKash / Nagad / Rocket | Dr 1122 Mobile Banking, Cr 1141 A/R |
+| Bank transfer | Dr 1112 Bank, Cr 1141 A/R |
+| Cash at counter | Dr 1111 Cash in Hand, Cr 1141 A/R |
+
+(Only fires if the order was invoiced — POS counter sales post directly without an A/R hop.)
+
+---
+
+## History and audit
+
+Every transaction, verified or not, shows up in the order's **Payment History** tab:
+
+- Amount, method, status, timestamp
+- Gateway / manual flag
+- Who verified (if verified)
+- Rejection reason (if rejected)
+
+Rejected transactions are retained for audit — they aren't deleted. If you reject in error and the customer actually paid, **don't un-reject**; create a fresh payment entry instead.
+
+---
+
+## Permissions
+
+| Role | Can verify / reject |
+|---|---|
+| `admin`, `branch_manager` | Yes |
+| `cashier` | Cash at counter only |
+| `store-staff`, `inventory_staff` | No — view only |
+
+---
+
+## Related
+
+- [Order Refunds](/accounting/order-refunds) — if you need to return money after verification
+- [COD Settlement](/accounting/cod-settlement) — different flow, money arrives in bulk via courier
+- [Permissions](/accounting/permissions) — role matrix for all accounting actions

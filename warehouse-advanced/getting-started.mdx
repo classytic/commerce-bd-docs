@@ -1,0 +1,118 @@
+---
+title: Warehouse (Advanced) — Getting Started
+description: The enterprise-tier WMS surfaces — cycle counting, lots, traceability, procurement, replenishment, cost layers, dispatch, quality
+---
+
+# Getting Started
+
+The basic [Inventory module](/commerce-bd/docs/inventory/getting-started) covers stock, transfers, and purchases. **Warehouse Advanced** is what's available when you're running BigBoss in **Standard** or **Enterprise** mode — proper WMS-grade features used by warehouse teams, not just store staff.
+
+[Open Warehouse](/dashboard/warehouse)
+
+---
+
+## What "Advanced" Means Here
+
+Same physical stock you already have — but with deeper tracking, finer-grained workflows, and audit-grade reporting. Specifically:
+
+| Surface | What it adds |
+|---------|-------------|
+| **Cycle counting** | Periodic stock-take cycles with variance reconciliation to GL |
+| **Lots & traceability** | Track batches, expiry, serial numbers, full forward + backward trace, recall capability |
+| **Procurement** | Purchase orders with 3-way matching (PO ↔ receipt ↔ bill) |
+| **Replenishment** | Auto-reorder rules — ROP / EOQ trigger PO drafts |
+| **Cost & valuation** | WAC / FIFO / FEFO cost layers, per-unit COGS posting |
+| **Dispatch** | Outbound shipment manifests, dock doors, appointments |
+| **Quality** | Inspection points, pass/fail checks, hold dispositions |
+
+---
+
+## FLOW_MODE Tiers
+
+The platform runs in one of three tiers — set centrally by your platform admin:
+
+| Tier | What's available |
+|------|------------------|
+| **simple** | Basics only — stock, transfers, purchases, audit |
+| **standard** | + lot tracking, packages, procurement, replenishment, cost layers |
+| **enterprise** | + traceability/recall, dispatch, quality, execution tasks |
+
+Within enterprise, each subsystem can be toggled independently:
+- `FLOW_QUALITY=true` enables the Quality surface
+- `FLOW_DISPATCH=true` enables the Dispatch surface
+- `FLOW_TASKS=true` enables scanner-driven Execution Tasks
+
+If a page in this section says **"Standard mode required"** or **"Enterprise only"**, that's why. Check with your platform admin if you expected access but a page won't load.
+
+---
+
+## A Mental Model — Where Each Surface Lives
+
+```
+                  ┌──────────────────────────────────────────────┐
+                  │     YOUR WAREHOUSE (one branch's stock)       │
+                  └──────────────────────────────────────────────┘
+                                     │
+       ┌──────────┬─────────┬────────┼─────────┬─────────┬────────┐
+       ↓          ↓         ↓        ↓         ↓         ↓        ↓
+  Audit/Count  Lots/Trace  Procure  Replenish  Cost   Dispatch Quality
+  ───────────  ──────────  ───────  ─────────  ────   ──────── ───────
+  count what   know what   buy what  buy what   know   ship     check
+  you have     you have    you need  before you what    what    what's
+  right now    & where     to buy    run out    cost    leaves   wrong
+```
+
+Each surface is independent — you can use any combination depending on your business needs.
+
+---
+
+## Multi-Branch — Each Warehouse Independent
+
+Every advanced surface is **per-branch** (organization-scoped):
+
+- A cycle count at Branch A doesn't see Branch B's stock
+- Replenishment rules at Branch A trigger only when Branch A's stock is low
+- Procurement orders deliver to a specific branch's vendor location
+- Cost layers track per-branch COGS — same SKU might have different layer history at different branches
+- Quality points + dispatch manifests scope to the branch they're created in
+
+For inter-branch movement (transferring stock from A to B), see [Branch Transfers](/commerce-bd/docs/inventory/transfers).
+
+---
+
+## What Posts to the GL
+
+Several advanced surfaces produce automatic accounting entries:
+
+| Surface | When | Posting |
+|---------|------|---------|
+| **Audit reconciliation** | When variance is approved | Adjustment move → DR/CR Inventory ↔ Variance account |
+| **Procurement receipt** | When goods arrive | DR Inventory, CR Goods Received Not Invoiced |
+| **Procurement invoice match** | When 3-way matches | DR Goods Received Not Invoiced, CR A/P |
+| **Cost layer consumption** | When goods leave (sale, transfer) | DR COGS, CR Inventory (at layer cost) |
+| **Quality reject_scrap** | When inspector scraps inventory | DR Loss Account, CR Inventory |
+
+You don't trigger these manually — they're side effects of the warehouse operations.
+
+---
+
+## Common First Tasks
+
+| Task | Where |
+|------|-------|
+| Run your first cycle count | **Warehouse > Audit** → see [Cycle Counting](/commerce-bd/docs/warehouse-advanced/cycle-counting) |
+| Set up auto-reorder rules | **Warehouse > Replenishment** → see [Procurement & Replenishment](/commerce-bd/docs/warehouse-advanced/procurement-and-replenishment) |
+| Track expiry dates on perishables | **Warehouse > Lots** → see [Lots & Traceability](/commerce-bd/docs/warehouse-advanced/lots-and-traceability) |
+| Inspect goods on receipt | **Warehouse > Quality** → see [Dispatch & Quality](/commerce-bd/docs/warehouse-advanced/dispatch-and-quality) |
+| Generate shipment manifest | **Warehouse > Dispatch** → same |
+| Investigate a stock variance | **Warehouse > Cost** + audit reports |
+
+---
+
+## What's next?
+
+- [Cycle Counting & Audit](/commerce-bd/docs/warehouse-advanced/cycle-counting) — periodic stock-takes with GL reconciliation
+- [Lots & Traceability](/commerce-bd/docs/warehouse-advanced/lots-and-traceability) — batch tracking, expiry, recall
+- [Procurement & Replenishment](/commerce-bd/docs/warehouse-advanced/procurement-and-replenishment) — POs and auto-reorder
+- [Cost & Valuation](/commerce-bd/docs/warehouse-advanced/cost-and-valuation) — WAC vs FIFO vs FEFO layers
+- [Dispatch & Quality](/commerce-bd/docs/warehouse-advanced/dispatch-and-quality) — enterprise-only outbound + inspection

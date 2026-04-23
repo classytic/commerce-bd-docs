@@ -1,0 +1,133 @@
+---
+title: CRM Opportunities
+description: Move sales deals through pipeline stages, win or lose, and track the funnel
+---
+
+# Opportunities
+
+An **opportunity** is a sales deal in motion — a specific amount, a target close date, an Account it belongs to, and a Pipeline it flows through.
+
+> Dashboard UI is in development. Operations below describe the workflow + the underlying API.
+
+---
+
+## Anatomy of an Opportunity
+
+| Field | Meaning |
+|-------|---------|
+| **Name** | Short label (e.g. "Acme — Q2 platform deal") |
+| **Account** | The company you're selling to |
+| **Primary Contact** | The person leading the buyer side |
+| **Amount** | Estimated deal size in BDT |
+| **Pipeline + Stage** | Workflow path + current step |
+| **Probability** | 0–100% — usually inherits from the stage's `defaultProbability`, can be overridden |
+| **Expected close date** | Target signing day |
+| **Status** | `open`, `won`, `lost`, or `abandoned` |
+| **Closed at** | Timestamp of win/lose/abandon (null while open) |
+| **Lost reason** | Required when status = `lost` |
+| **Owner** | The salesperson responsible |
+
+---
+
+## Lifecycle
+
+```
+open → (advance through stages) → {won | lost | abandoned}
+```
+
+| Action | Endpoint | What it does |
+|--------|----------|--------------|
+| **Advance to stage** | `POST /crm/opportunities/:id/action { action: 'advanceToStage', payload: { stageId } }` | Moves to the named stage. Probability auto-updates to the stage default unless overridden. |
+| **Win** | `POST /crm/opportunities/:id/action { action: 'win' }` | Status → `won`. Sets `closedAt`. Fires `crm:opportunity.won` event. |
+| **Lose** | `POST /crm/opportunities/:id/action { action: 'lose', payload: { lostReasonId } }` | Status → `lost`. **Loss reason is required.** Fires `crm:opportunity.lost` event. |
+| **Abandon** | `POST /crm/opportunities/:id/action { action: 'abandon' }` | Status → `abandoned`. Use when the deal goes silent (neither won nor explicitly lost). |
+
+Once an opportunity is `won`, `lost`, or `abandoned`, status transitions are **locked**. You can still edit the amount, add notes/activities, and re-assign owner — but you can't move it back to `open`.
+
+---
+
+## Win → Customer Becomes Active
+
+When you mark an opportunity **Won**:
+
+1. Status → `won`, `closedAt` is stamped
+2. The `crm:opportunity.won` event fires
+3. The Customers module's event handler updates `Customer.crm.stage = 'active'` and `crm.lastContactedAt = now`
+4. Your win-rate reports tick up
+
+This is the **only automatic bridge** from CRM to Customers — winning a deal officially makes the customer "active" in the rest of the system.
+
+---
+
+## Lose → Customer Becomes Churned
+
+When you mark **Lost**:
+
+1. Status → `lost`, `closedAt` stamped, `lostReasonId` recorded
+2. The `crm:opportunity.lost` event fires
+3. `Customer.crm.stage = 'churned'`
+
+Loss reasons are mandatory — see [Loss Reasons](/commerce-bd/docs/crm/loss-reasons) for why.
+
+---
+
+## Probability and Forecasting
+
+Every opportunity has a probability (0–100%). When you advance to a new stage, the probability auto-updates to that stage's `defaultProbability`. Override it manually if your gut says otherwise.
+
+A standard pipeline + probabilities:
+
+| Stage | Default % | When to advance |
+|-------|-----------|-----------------|
+| Qualify | 10% | Has need + authority |
+| Propose | 30% | Sent a proposal |
+| Negotiate | 60% | Discussing price/terms |
+| Close | 90% | Verbal yes, paperwork in flight |
+
+**Weighted forecast** = sum of `amount × probability / 100` across all open opportunities. A pipeline with BDT 1,000,000 at 60% and BDT 500,000 at 90% has a weighted forecast of BDT 1,050,000.
+
+---
+
+## Reassign an Opportunity
+
+When a salesperson leaves or a deal moves regions:
+
+```
+PATCH /crm/opportunities/:id { ownerId: '<new-user-id>' }
+```
+
+Activities + notes attached to the opportunity stay where they are — the owner change just updates accountability. Past activities by the old owner remain attributed to them.
+
+---
+
+## Branch Scoping
+
+Opportunities are **branch-scoped**. A multi-branch business runs separate pipelines per branch — head office's "Enterprise" pipeline is independent from a regional retail branch's "Walk-in" pipeline.
+
+Cross-branch deals (rare) are handled by either:
+- Picking the branch that owns the close (most common)
+- Splitting into two opportunities, one per branch
+
+There's no built-in "shared opportunity" model.
+
+---
+
+## Reporting
+
+Common queries to run against `GET /crm/opportunities`:
+
+- **Pipeline by stage** — `?status=open&groupBy=stageId` → kanban-style view
+- **Win rate this quarter** — count `won` / count `won + lost` for the period
+- **Loss reason breakdown** — `?status=lost&groupBy=lostReasonId` → fixes for funnel leaks
+- **Per-rep close ratio** — `?ownerId=:user&closedAt>=...`
+- **Average sales cycle** — `closedAt - createdAt` for `won` deals
+
+The dashboard pages we're building will surface all of these as ready-made reports.
+
+---
+
+## What's next?
+
+- [Pipelines](/commerce-bd/docs/crm/pipelines) — define your sales process and stages
+- [Loss Reasons](/commerce-bd/docs/crm/loss-reasons) — required for closing as lost
+- [Accounts & Contacts](/commerce-bd/docs/crm/accounts-and-contacts) — who you're selling to

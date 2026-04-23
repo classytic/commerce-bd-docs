@@ -1,0 +1,170 @@
+---
+title: Size Guides
+description: Reusable measurement charts (Chest, Length, Sleeve, etc.) attached to apparel products
+---
+
+# Size Guides
+
+Size guides are **reusable measurement tables** that show customers what XS/S/M/L/XL actually translate to in real-world dimensions. Attach one to a product and customers see "S = 38" chest, M = 40", L = 42"" on the storefront.
+
+[Open Size Guides](/dashboard/size-guides)
+
+---
+
+## Why a Separate Module?
+
+You probably have many T-shirts that share the **same size chart**. Without size guides, you'd duplicate the table on every product. With them:
+
+1. Define the chart once (e.g. "Standard Men's T-Shirt — Inches")
+2. Attach to as many products as you want
+3. Update once → every product reflects the new measurements
+
+It's the same pattern as categories — define centrally, reference per-product.
+
+---
+
+## Anatomy of a Size Guide
+
+| Field | Meaning |
+|-------|---------|
+| **Name** | Display label (e.g. "Standard Men's T-Shirt — Inches") |
+| **Slug** | URL-friendly auto-generated; immutable after creation |
+| **Measurement unit** | `inches` or `cm` — appears alongside numbers on the storefront |
+| **Measurement labels** | Column headers (e.g. ["Chest", "Length", "Sleeve"]) — max 10 |
+| **Sizes** | Rows — each is a size name + measurements key/value |
+| **Display order** | Numeric, lower first |
+| **Active** | Toggle to hide without deleting |
+
+---
+
+## Example: Men's T-Shirt
+
+```
+Name: Standard Men's T-Shirt — Inches
+Unit: inches
+Labels: [Chest, Length, Sleeve]
+
+Sizes:
+  XS:  { Chest: 36, Length: 26, Sleeve: 7.5 }
+  S:   { Chest: 38, Length: 27, Sleeve: 8.0 }
+  M:   { Chest: 40, Length: 28, Sleeve: 8.5 }
+  L:   { Chest: 42, Length: 29, Sleeve: 9.0 }
+  XL:  { Chest: 44, Length: 30, Sleeve: 9.5 }
+  2XL: { Chest: 46, Length: 31, Sleeve: 10.0 }
+```
+
+The customer sees this rendered as a table on the product page when they click **Size Guide**.
+
+---
+
+## Create a Size Guide
+
+1. **Size Guides** → **New Size Guide**
+2. **Basic** tab:
+   - Name + display order + active
+3. **Measurements** tab:
+   - Pick unit (inches or cm)
+   - Add labels (Chest, Length, etc.) — drag to reorder
+4. **Sizes** tab:
+   - Add a row for each size (XS, S, M, ...)
+   - Type the measurement for each label
+5. **Save**
+
+The form validates: every size needs a value for every label (no blanks).
+
+---
+
+## Attach to Products
+
+On the product detail page → **Size Guide** field → pick a size guide from the dropdown. Save. Done.
+
+Multiple products can share the same guide — that's the point. No copying.
+
+The storefront product page will show a **"Size Guide"** link → opens a modal with the table.
+
+---
+
+## Multiple Guides per Product
+
+You can only attach **one size guide per product**. If a product has multiple measurement contexts (e.g. body measurements + garment measurements), put both in the same guide as more columns:
+
+```
+Labels: [Chest (Body), Chest (Garment), Waist (Body), Waist (Garment)]
+```
+
+Customers can read it as one chart with both views side-by-side.
+
+---
+
+## Different Units
+
+You can run multiple guides for the same product line if your customers prefer different units:
+
+- "Standard Men's T-Shirt — Inches"
+- "Standard Men's T-Shirt — Cm"
+
+But typically one is enough. The storefront UI may also auto-convert if you build a unit-toggle.
+
+If you sell internationally, the safest default is **cm** (more universal) with a converted-to-inches helper note.
+
+---
+
+## Common Patterns
+
+| Product line | Suggested guide |
+|--------------|-----------------|
+| T-shirts / casual tops | Chest, Length, Sleeve |
+| Pants / trousers | Waist, Hip, Inseam, Thigh |
+| Dresses | Bust, Waist, Hip, Length |
+| Shoes | EU size, US size, UK size, Foot length cm |
+| Hats | Head circumference (cm + inches) |
+| Rings (jewelry) | US size, EU size, Inner diameter mm |
+
+Pick a convention and stick to it within a product line — customers get confused by inconsistent labeling.
+
+---
+
+## Editing After Attachment
+
+You can edit a size guide AFTER it's attached to products. Changes propagate immediately to:
+
+- Storefront display
+- POS variant picker (if it shows the guide)
+- Customer review of the chart on the product page
+
+Past orders are **not retroactively updated** — they reference the size by name (S, M, L), not by measurement. So a size XL with chest 44" sold today and the same XL with chest 45" tomorrow are both "XL" in the order record.
+
+---
+
+## Display Order
+
+The list is sorted by `displayOrder` ascending. Use to keep frequently-used guides at the top:
+
+```
+10 — Standard Men's T-Shirt
+20 — Standard Women's T-Shirt
+30 — Standard Kids T-Shirt
+...
+90 — Specialty Performance Wear
+```
+
+Increment by 10 so you can insert new guides without renumbering.
+
+---
+
+## Common Pitfalls
+
+| Symptom | Cause + fix |
+|---------|-------------|
+| Form rejects with "missing measurement" | At least one cell is blank — every size needs a value for every label |
+| Size guide doesn't show on product page | Product hasn't been saved with the guide attached, OR the guide is `inactive` |
+| Numbers look wrong on storefront | Unit mismatch — the chart is `cm` but customers expect inches. Create a parallel guide. |
+| Two guides show the same data | Duplicate. Pick one as canonical, point all products at it, archive the other. |
+
+---
+
+## What's next?
+
+- [Variants & SKUs](/commerce-bd/docs/products/variants-and-skus) — define the actual variant SKUs that the size guide references
+- [Categories](/commerce-bd/docs/products/categories) — group apparel products by category
+- [Reviews](/commerce-bd/docs/products/reviews) — customer feedback on fit

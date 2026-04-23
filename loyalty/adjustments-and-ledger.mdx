@@ -1,0 +1,153 @@
+# Adjustments & Ledger
+
+Behind every customer's points balance is an **immutable ledger** of every credit and debit. This page covers how to read it, how to post manual adjustments, and when to use adjust vs. tier-override.
+
+---
+
+## The ledger model
+
+Every points change — earned, redeemed, adjusted, expired, reversed — is a row in the ledger. Balance is always **derived** from the sum of ledger entries; it's never directly written.
+
+| Entry type | When it fires | Direction |
+|---|---|---|
+| `earned` | Order completed, earning rule matched | Credit |
+| `redeemed` | Customer applied points to a cart | Debit |
+| `adjusted` | Admin manually added or removed points | Either |
+| `expired` | Points past their expiry date (cron job) | Debit |
+| `reversed` | Earning reversed (order cancelled/refunded) | Debit |
+| `referral_bonus` | Referrer earned bonus on referee's first order | Credit |
+
+Each entry stores: member, amount, balance-after, reason, actor (admin user id), and source (order id, rule id, or "manual"). **Nothing gets deleted** — corrections post a new offsetting entry.
+
+---
+
+## Read the ledger
+
+For an admin: **Loyalty → Members → {member} → History**.
+
+The history page shows every entry chronologically, with running balance. Filters:
+
+- **Type** (earned / redeemed / adjusted / expired)
+- **Date range**
+- **Source** (specific order, rule, or "manual only")
+
+Export to CSV for audit or reconciliation.
+
+For a customer (self-service): their loyalty account page shows the same history, minus the actor id and admin notes.
+
+---
+
+## Manual adjustments
+
+When to post one:
+- **Compensation** — customer complaint, credit a goodwill balance
+- **Correction** — a stuck earning didn't post; credit retroactively
+- **Debit** — fraud detection, tier abuse, chargeback recovery
+- **Migration** — bulk-credit after importing a legacy loyalty program
+
+### How
+
+**Loyalty → Members → {member} → Adjust Points**.
+
+| Field | Notes |
+|---|---|
+| **Direction** | Credit (add) or Debit (subtract) |
+| **Amount** | Positive integer |
+| **Reason** | Free text, required. Shown on the ledger row and the customer's history. |
+| **Reference** | Optional — support ticket ID, order number, audit reference |
+
+On submit, a ledger entry posts. The customer's balance updates. If they have live sessions (storefront cart), the update pushes to their UI within seconds.
+
+### Constraints
+
+- Can't debit past zero. Manual debit capped at `current balance`.
+- Credits don't affect **lifetime points** (that's reserved for actual earnings, which drive tier qualification). A credit goes into `current` only; it can't promote a tier.
+- To drive a tier change, use **Tier Override** instead.
+
+---
+
+## Tier override vs adjustment — which to use
+
+| Situation | Use |
+|---|---|
+| Customer is on Silver but should be Gold (earned it; system missed) | **Tier Override** |
+| Customer had a bad experience; credit ৳500-equivalent in points | **Adjust (Credit)** |
+| System credited earnings twice; debit the duplicate | **Adjust (Debit)** |
+| Customer has 9,500 lifetime but tier threshold is 10,000; you want to promote early | **Adjust (Credit, with reason)** — note: feeds `current`, not lifetime, so won't auto-promote. Use Tier Override for the actual tier change. |
+
+Tier Override directly pins a member to a tier for a period. It doesn't change ledger entries — it's a projection-layer override.
+
+### Tier Override form
+
+- **Target tier** — pick from active tiers
+- **Valid until** — optional expiry (auto-reverts to computed tier)
+- **Reason** — audited
+
+Remove the override anytime via **Remove Override** and the member returns to their computed tier on the next evaluation run.
+
+---
+
+## Expiry
+
+Points have a configurable lifetime (default: **12 months from earn date**, per-tier customizable). A cron runs **daily at 02:00 branch time** and:
+
+1. Finds ledger entries older than the expiry cutoff with an unspent balance
+2. Posts an `expired` debit entry
+3. Fires `POINTS_EXPIRED` event → Customer.membership projection updates
+
+**FIFO order**: oldest unspent points expire first. This is important — if a member earned 100 points in January and redeemed 50 in June, the expiry engine considers the oldest 50 as still alive (not the freshly redeemed ones).
+
+**Notifications**: optional per-branch — send "N points expire in 30 days" warnings. Configured under **Platform → Notifications → Loyalty**.
+
+---
+
+## Audit and compliance
+
+The ledger is your audit trail. For tax inspections, partner reconciliations, or internal reviews:
+
+- Filter by **actor = specific admin** to see everything that user posted
+- Filter by **adjusted + manual** to see all discretionary credits/debits
+- Export for external analysis
+
+Every entry is immutable — correcting an error posts an offsetting entry, not an edit. This means your balance reconciliation always ties out.
+
+---
+
+## Customer.membership projection
+
+The `Customer` model carries a thin `membership` field that's **derived** from the ledger (for fast reads). It stores:
+
+```
+membership: {
+  memberId,
+  cardId,
+  tier,
+  points: { current, lifetime, redeemed },
+  syncedAt,
+}
+```
+
+The projection updates on every `POINTS_EARNED`, `POINTS_ADJUSTED`, `POINTS_EXPIRED`, and `TIER_*` event. If it gets out of sync (rare, usually a partial event failure), run **Loyalty → Admin → Resync Projections** to rebuild from the ledger.
+
+Storefront and POS read from this projection for speed. Internal ops read the ledger directly.
+
+---
+
+## Permissions
+
+| Action | Who |
+|---|---|
+| View ledger (own account) | The customer |
+| View ledger (any member) | `admin`, `branch_manager` |
+| Post credit adjustment | `admin`, `branch_manager` (audit-logged) |
+| Post debit adjustment | `admin` only |
+| Tier override | `admin` only |
+| Resync projections | `admin`, `superadmin` |
+
+---
+
+## Related
+
+- [Checkout Integration](/loyalty/checkout-integration) — where earning + redemption happen
+- [Tiers](/loyalty/tiers) — how tier qualification computes
+- [Permissions](/loyalty/permissions) — full role matrix

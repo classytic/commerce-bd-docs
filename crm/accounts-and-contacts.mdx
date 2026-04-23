@@ -1,0 +1,132 @@
+---
+title: CRM Accounts & Contacts
+description: Companies (Accounts) and the people inside them (Contacts) — the relationship layer of the CRM
+---
+
+# Accounts & Contacts
+
+**Accounts** = companies. **Contacts** = the people at those companies. Together they form the relationship graph of your CRM.
+
+> Dashboard UI is in development. The model + API are ready and integrated with leads/opportunities.
+
+---
+
+## Accounts
+
+An **account** represents a company or organization you do business with — not the deals themselves, but the entity behind them.
+
+| Field | Meaning |
+|-------|---------|
+| **Name** | Display name (e.g. "Acme Corp") |
+| **Domain** | Primary email/web domain (e.g. `acme.com`) — used for deduplication |
+| **Industry** | Picklist (Retail, Manufacturing, Healthcare, …) |
+| **Annual revenue** | Estimated turnover, optional |
+| **Size** | Bucket: micro / small / medium / large / enterprise |
+| **Owner** | The salesperson who owns this relationship |
+| **Account type** | Customer / Partner / Vendor / Prospect |
+
+### Deduplication
+
+Accounts are unique on `(organizationId, domain)`. If you try to create a second account with the same domain in the same branch, the request fails with a unique-index error — the system assumes you mean the existing account.
+
+When converting a Lead with `email: jane@acme.com`, the system:
+1. Extracts the domain (`acme.com`)
+2. Looks for an existing Account with that domain
+3. Reuses it if found, creates a new one if not
+
+This means your sales team doesn't accidentally end up with three "Acme Corp" rows — every deal at Acme rolls up to one account.
+
+---
+
+## Contacts
+
+A **contact** is a person at an account — typically the buyer, decision-maker, or champion you talk to.
+
+| Field | Meaning |
+|-------|---------|
+| **First / last name** | Person's name |
+| **Email** | Primary email |
+| **Phone** | Optional |
+| **Job title** | Their role at the account |
+| **Account ID** | Which company they work for |
+| **Owner** | The salesperson who owns this contact |
+
+> **Contacts are a projection over the existing Customers collection.** When a CRM lead converts, the new contact lives in the same Customers store — so a Contact and a Customer record are the same person, viewed from different angles. The Customer side carries the post-sale data (orders, balances, loyalty); the Contact side carries the pre-sale CRM data (job title, primary contact flag, account link).
+
+[Open Customers](/dashboard/customers) — to see the post-sale view of a contact
+
+---
+
+## How They Link Together
+
+```
+Account (Acme Corp)
+├── Contact (Jane Buyer, CFO)         ← primary contact on Opportunity
+├── Contact (John Champion, IT lead)
+└── Opportunity (Q2 Platform Deal)    ← linked via accountId, primaryContactId
+       └── Activities, Notes, Stage transitions
+```
+
+One account can have many contacts. One contact can be the primary on many opportunities. One opportunity has exactly one account and one primary contact.
+
+---
+
+## Working with Accounts
+
+**Standard CRUD** is via `/crm/accounts`:
+
+```
+GET    /crm/accounts                 ← list (filter: industry, size, accountType, owner)
+GET    /crm/accounts/:id             ← detail
+POST   /crm/accounts                 ← create
+PATCH  /crm/accounts/:id             ← update
+DELETE /crm/accounts/:id             ← delete (use sparingly — break links to opportunities)
+```
+
+Common queries:
+- **By industry** — `?industry=retail&accountType=prospect` → all retail prospects
+- **By owner** — `?ownerId=<user>` → my accounts
+- **Recent activity** — sort by `lastActivityAt` desc to see who I've been talking to
+
+---
+
+## Working with Contacts
+
+Contacts are managed via the existing Customers endpoints — `/customers` plus the `crm.*` fields:
+
+```
+GET    /customers?crm.accountId=<account>     ← all contacts at an account
+PATCH  /customers/:id { crm: { jobTitle: 'CFO', accountId: '...' } }   ← link to an account
+```
+
+Setting `crm.accountId` on a customer is what "promotes" them from a basic customer to a CRM contact.
+
+---
+
+## Don't Delete — Archive
+
+Accounts and contacts accumulate history (activities, notes, opportunities). Deleting them orphans those records.
+
+Better practice:
+- **Account.accountType = 'inactive'** — hides from default lists, keeps history
+- **Contact.isActive = false** — same for people who left the company
+
+If you genuinely need a hard delete (GDPR right-to-erasure, etc.), do it through the customer module's deletion flow, which cascades to anonymize CRM links.
+
+---
+
+## Common Pitfalls
+
+| Symptom | Cause + fix |
+|---------|-------------|
+| Two "Acme Corp" accounts in the list | Domains differ (`acme.com` vs `acmecorp.com`). Pick one, merge by reassigning all opportunities/contacts to the kept account, then delete the empty one. |
+| Contact missing on Opportunity | The opportunity's `primaryContactId` was never set. Edit the opportunity and assign one. |
+| Lead conversion created a duplicate contact | The lead's email didn't match an existing customer. Check if a customer with the same email already exists — the conversion uses email as the dedup key. |
+
+---
+
+## What's next?
+
+- [Leads](/commerce-bd/docs/crm/leads) — where new contacts come from (via conversion)
+- [Opportunities](/commerce-bd/docs/crm/opportunities) — what your account team is working on
+- [Activities & Notes](/commerce-bd/docs/crm/activities-and-notes) — the relationship history

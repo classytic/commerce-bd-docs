@@ -1,0 +1,84 @@
+# Stock & Accounting Link
+
+Every inventory movement automatically creates a journal entry. You do not need to post stock transactions manually — the system does it for you.
+
+## How it works
+
+When goods move in or out of your warehouse, the accounting engine posts a matching entry to keep the books accurate. The golden rule: **if stock changes, the ledger changes**.
+
+## Common stock transactions and their entries
+
+### Purchasing (goods received from supplier)
+
+When you receive goods against a purchase order:
+
+| Account | Debit | Credit |
+|---------|-------|--------|
+| Inventory (1310) | Cost of goods | |
+| Input VAT (1150) | VAT amount (if claimable) | |
+| Accounts Payable (2111) | | Total including VAT |
+
+If the supplier charges a **truncated VAT rate** (5%, 7.5%, or 10%), input VAT is not claimable — the full amount goes to Inventory.
+
+### Selling (goods shipped to customer)
+
+When a POS sale or ecommerce order is fulfilled:
+
+| Account | Debit | Credit |
+|---------|-------|--------|
+| Cash / Bank / Mobile (1111/1112/1122) | Amount received | |
+| Sales Revenue (4111) | | Net sale amount |
+| Output VAT (2132) | | VAT collected |
+
+Cost of goods sold is posted separately when the stock actually leaves the warehouse.
+
+### Stock adjustments
+
+When you do a physical count and find differences:
+
+| Account | Debit | Credit |
+|---------|-------|--------|
+| Inventory Adjustment Expense (5199) | Shortage amount | |
+| Inventory (1310) | | Shortage amount |
+
+For surplus (found more than expected), the entries reverse.
+
+### Inter-branch transfers
+
+When stock moves from one branch to another:
+
+**Sending branch:**
+| Account | Debit | Credit |
+|---------|-------|--------|
+| Inter-Branch Receivable | Transfer value | |
+| Inventory (1310) | | Transfer value |
+
+**Receiving branch:**
+| Account | Debit | Credit |
+|---------|-------|--------|
+| Inventory (1310) | Transfer value | |
+| Inter-Branch Payable | | Transfer value |
+
+### Import clearance (for importers)
+
+When goods clear customs, multiple taxes stack in a specific order:
+
+| Account | Debit | Credit |
+|---------|-------|--------|
+| Inventory (1310) | Assessable Value + CD + SD (landed cost) | |
+| Advance Tax Paid (1200) | AT amount | |
+| Input VAT (1150) | VAT amount (if claimable) | |
+| AIT Receivable (1151) | AIT amount | |
+| Cash / Bank | | Total paid to customs |
+
+AIT (Advance Income Tax) is **not** claimable as VAT input — it offsets your income tax liability at year-end.
+
+## Where to check
+
+- **General Ledger** report → filter by Inventory account (1310) to see all stock-related entries
+- **Trial Balance** → Inventory line shows current stock value on the books
+- **Journal Entries** → search by source reference (purchase order number, POS transaction ID) to find the auto-posted entry
+
+## Automatic vs manual
+
+All entries listed above are created **automatically** by the posting engine. You should never need to create manual journal entries for stock movements. If the numbers look wrong, check the source transaction (purchase, sale, transfer) rather than editing the journal entry directly.

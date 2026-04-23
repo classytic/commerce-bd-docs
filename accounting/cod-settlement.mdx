@@ -1,0 +1,119 @@
+# Cash on Delivery Settlement
+
+COD orders don't put cash in your bank on day one — the courier collects it, deducts their commission, and remits the net days later. This page explains how the books stay correct from placement to final settlement.
+
+---
+
+## The money's journey
+
+```
+Order placed (COD)              Courier delivers               You record settlement
+-----------------------------   ------------------------       ---------------------------
+Customer owes ৳1,000            Customer pays courier          Bank +৳900, Commission +৳90,
+A/R opens on books              ৳1,000 cash                     Writeoff +৳10, A/R clears
+```
+
+Three events, three journal entries, one story. You only do the last step manually — the first two are automatic.
+
+---
+
+## At order placement
+
+When a COD order is created, the system posts this entry automatically:
+
+| Account | Dr | Cr |
+|---|---|---|
+| 1141 Accounts Receivable (linked to this order) | ৳1,000 | |
+| 4115 Sales Discount (only if a promo was used) | (promo amt) | |
+| 4111 Domestic Sales Revenue | | (gross) |
+| 2132 VAT Output Payable (if applicable) | | (VAT) |
+
+**Why A/R and not Cash?** The money isn't yours yet. Posting cash here would overstate your bank balance and hide the collection risk. A/R correctly shows "this order is promised money, not received money."
+
+**Maturity date**: the A/R entry carries an expected remittance date (default 14 days from placement) so aging reports flag couriers who delay payouts.
+
+---
+
+## When the courier pays you
+
+Once the courier remits for a batch of orders, go to the order and click **Record COD Settlement**. Enter:
+
+| Field | What to enter | Example |
+|---|---|---|
+| **Actual received** | What hit your bank / cash | ৳900 |
+| **Courier commission** | What the courier deducted | ৳90 |
+| **Writeoff** | Unrecovered shortfall (refused, lost, damaged) | ৳10 |
+| **Deposit account** | Bank (1112) or Cash in Hand (1111) | Bank |
+| **Notes** | Optional reference for your records | Pathao batch 2026-04-23 |
+
+The sum **must equal the original COD amount** (৳1,000 in this example). The system rejects mismatched totals before posting.
+
+On submit, this journal posts:
+
+| Account | Dr | Cr |
+|---|---|---|
+| 1112 Bank (or 1111 Cash, per your choice) | ৳900 | |
+| 6423 Courier COD Commission | ৳90 | |
+| 6702 Bad Debt Written Off | ৳10 | |
+| 1141 Accounts Receivable (same order) | | ৳1,000 |
+
+A/R now nets to zero for that order. The commission lands in selling & distribution expense; the writeoff lands below operating profit.
+
+---
+
+## Cancelling a COD order
+
+If a COD order is cancelled **before** settlement (customer returned at doorstep, courier couldn't deliver, etc.), use **Cancel Order**. The system posts a reversal of the placement entry:
+
+| Account | Dr | Cr |
+|---|---|---|
+| 4111 Domestic Sales Revenue | (gross) | |
+| 2132 VAT Output Payable | (VAT) | |
+| 4115 Sales Discount reversal | | (promo amt) |
+| 1141 Accounts Receivable | | (full) |
+
+A/R clears, revenue reverses, books balance.
+
+> Don't use Cancel after settlement. If money already hit your bank, use **Issue Refund** instead — see [Order Refunds](/accounting/order-refunds).
+
+---
+
+## Partial collection — the three cases
+
+**Courier paid in full, no fee** (rare): actualReceived = gross, commission = 0, writeoff = 0.
+
+**Courier paid net of commission** (normal): actualReceived + commission = gross, writeoff = 0.
+
+**Courier short-paid** (customer partial-refused, package damaged in transit): all three fields have values and sum to gross. Writeoff captures the hole.
+
+---
+
+## Reporting
+
+Three accounts to watch for COD health:
+
+| Account | What it tells you |
+|---|---|
+| 1141 A/R (filter by maturityDate overdue) | Couriers who haven't remitted on time |
+| 6423 Courier COD Commission | Monthly commission cost — negotiate if it spikes |
+| 6702 Bad Debt Written Off | Lost revenue from refused / damaged COD orders |
+
+Run **A/R Aging** with the "COD" filter to see which batches are overdue for settlement.
+
+---
+
+## Permissions
+
+| Role | Can do |
+|---|---|
+| `branch_manager`, `admin` | Record settlements, reverse unsettled COD |
+| `cashier`, `store-staff` | View only |
+| `superadmin` | Everything, including reopen-after-day-close |
+
+---
+
+## Related
+
+- [How Settlement Works](/accounting/settlement-model) — invoice/bill settlement, not courier settlement
+- [Order Refunds](/accounting/order-refunds) — when money's already in the bank
+- [VAT Basics](/accounting/vat-basics) — the VAT line in the placement entry

@@ -1,0 +1,187 @@
+---
+title: Cost & Valuation
+description: How inventory cost is tracked — WAC vs FIFO vs FEFO layers — and how COGS posts to the GL
+---
+
+# Cost & Valuation
+
+Every unit of stock has a **cost**. When that unit leaves your warehouse (sale, transfer, scrap), that cost becomes **COGS** on the P&L. The system tracks costs as **layers** that stack up at receipt and drain in a specific order.
+
+[Open Cost & Valuation](/dashboard/warehouse/cost)
+
+> Standard mode or higher required.
+
+---
+
+## Three Costing Methods
+
+| Method | When to use |
+|--------|-------------|
+| **WAC** (Weighted Average Cost) | Simple, smoothed cost — most retailers default |
+| **FIFO** (First-In, First-Out) | Tax-efficient when prices are rising, audit-friendly |
+| **FEFO** (First-Expire, First-Out) | Perishables — picks oldest by expiry, not by receipt date |
+
+Set per platform (most common), per category (advanced), or per SKU (rare). Talk to your finance team about the tax implications before changing — it affects reported profit.
+
+---
+
+## How Layers Work
+
+Each receipt creates a **cost layer** with a date, unit cost, and quantity. The stock you hold is the sum of layers.
+
+Example — over a week, Branch A receives stock at varying costs:
+
+```
+Mon: receive 50 units @ BDT 100 each → Layer 1 (50 @ 100)
+Wed: receive 30 units @ BDT 110 each → Layer 2 (30 @ 110)
+Fri: receive 20 units @ BDT 105 each → Layer 3 (20 @ 105)
+
+Total stock: 100 units, total cost: 50×100 + 30×110 + 20×105 = 10,400 BDT
+```
+
+When stock leaves (sale, transfer), layers **drain in order** based on the costing method.
+
+---
+
+## FIFO Drain Example
+
+Method = FIFO. A customer buys 60 units:
+
+```
+60 units leave →
+  Drain Layer 1 fully:   50 @ 100 = 5,000
+  Drain 10 from Layer 2: 10 @ 110 = 1,100
+  Total COGS:                     = 6,100 BDT
+```
+
+Remaining stock: Layer 2 (20 @ 110) + Layer 3 (20 @ 105) = 40 units, 4,300 BDT.
+
+---
+
+## FEFO Drain Example
+
+Method = FEFO with lots tracking expiry:
+
+```
+SKU: yogurt-500ml
+Lot YOG-A: expires 2026-05-01, 50 @ 18 BDT
+Lot YOG-B: expires 2026-05-15, 100 @ 19 BDT
+Lot YOG-C: expires 2026-06-01, 200 @ 17 BDT
+
+Customer buys 60:
+  Drain YOG-A fully:   50 @ 18 = 900   (earliest expiry)
+  Drain 10 from YOG-B: 10 @ 19 = 190
+  Total COGS:                  = 1,090 BDT
+```
+
+Note: FEFO picks by **expiry**, not by receipt date. YOG-C is cheapest but has latest expiry — picked last.
+
+---
+
+## WAC Drain Example
+
+Method = WAC. The system computes a single weighted average cost across all stock.
+
+```
+Stock: Layer 1 (50 @ 100) + Layer 2 (30 @ 110) + Layer 3 (20 @ 105)
+       = 100 units, 10,400 total cost
+WAC = 10,400 / 100 = 104 BDT per unit
+
+Customer buys 60 → COGS = 60 × 104 = 6,240 BDT
+Remaining: 40 units × 104 = 4,160 BDT
+```
+
+WAC re-computes after every receipt. Simpler reporting, smoother margins, but loses cost-layer precision (can't tell which actual layer was sold).
+
+---
+
+## What Gets Posted to GL
+
+Every move that **consumes** stock posts COGS:
+
+```
+DR  COGS account (5xxx)
+CR  Inventory account (1xxx)   amount: layer cost × quantity
+```
+
+For a sale, this happens at the moment the sale order is fulfilled (not at order creation — only when goods physically leave). For a transfer, it happens at dispatch from sender + at receipt at receiver (offset to Inventory In Transit account).
+
+For an audit-variance write-down (loss of stock you can't account for), COGS is replaced by **Inventory Variance** (5xxx-variance):
+
+```
+DR  Inventory Variance
+CR  Inventory
+```
+
+This shows up separately on the P&L so management can see "real COGS vs shrinkage".
+
+---
+
+## Investigate Cost Discrepancies
+
+[Cost & Valuation page](/dashboard/warehouse/cost) lets you drill down per SKU:
+
+### Valuation view
+
+For a SKU + location: total quantity × WAC (or layered) cost = current inventory value at this location.
+
+Use for:
+- Year-end inventory valuation
+- Branch-level inventory worth
+- Detecting valuation drift (WAC creeping up unexpectedly = cost-layer issue)
+
+### Layers view
+
+For a SKU: the actual cost layers — date received, unit cost, remaining quantity per layer.
+
+Use for:
+- Verifying FIFO is draining correctly (oldest layer should drain first)
+- Spotting stuck-in-time layers (a layer from 5 years ago with 1 unit remaining = stale, write off)
+- Understanding why COGS dipped or spiked
+
+---
+
+## Per-Branch Costing
+
+Cost layers are **per-branch**. Same SKU at Branch A and Branch B has independent layer history:
+
+```
+Branch A: Layer 1 (50 @ 100), Layer 2 (30 @ 110)  → WAC 103.75
+Branch B: Layer 1 (100 @ 95)                       → WAC 95
+```
+
+Same SKU, different costs. Why? Receipts happened at different times with different supplier prices. Transfers between branches carry the cost layer (sender's WAC becomes receiver's layer cost).
+
+This means a SKU's reported COGS varies depending on **which branch sold it**.
+
+---
+
+## Switching Methods
+
+**Don't switch lightly.** Going FIFO → WAC re-baselines the cost basis and creates a step change in COGS that's visible in reports. Auditors will ask. Some implications:
+
+- **FIFO → WAC** — past sales' COGS preserved; future sales use new WAC immediately
+- **WAC → FIFO** — system needs a baseline FIFO layer; usually treated as one big layer at current WAC, then new receipts add proper layers
+- **Either ↔ FEFO** — only valid if the SKU has lots with expiry; otherwise rejects
+
+If you're switching, do it at the start of a new fiscal year so the change aligns with reporting boundaries.
+
+---
+
+## Common Pitfalls
+
+| Symptom | Cause + fix |
+|---------|-------------|
+| WAC keeps drifting up | Suppliers raising prices → WAC rises with each receipt. Normal. |
+| Layer with 0.001 units that won't drain | Floating-point residue from past splits. Run "consolidate layers" admin job. |
+| COGS lower than expected | Possible: cheap stock from old layer being drained ahead of recent expensive stock — verify FIFO is in effect |
+| FEFO not picking earliest expiry | The product variant might not be lot-tracked, OR lots have null expiry. Set expiry on receipt. |
+
+---
+
+## What's next?
+
+- [Cycle Counting & Audit](/commerce-bd/docs/warehouse-advanced/cycle-counting) — variance valuation
+- [Lots & Traceability](/commerce-bd/docs/warehouse-advanced/lots-and-traceability) — required for FEFO
+- [Procurement & Replenishment](/commerce-bd/docs/warehouse-advanced/procurement-and-replenishment) — where layers are created
+- [Stock & Accounting Link](/commerce-bd/docs/accounting/stock-accounting) — full GL impact

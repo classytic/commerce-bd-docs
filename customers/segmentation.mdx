@@ -1,0 +1,119 @@
+---
+title: Customer Segmentation & Tags
+description: Group customers with tags, customer types, and revenue tiers — drive campaigns, reports, and pricing
+---
+
+# Segmentation & Tags
+
+Three layers of grouping let you slice customers however you need:
+
+1. **Tags** — free-form labels you attach manually
+2. **Customer type** — fixed picklist (`retail` / `wholesale` / `distributor`)
+3. **Revenue tier** — auto-computed from lifetime spend
+
+Each is searchable and filterable on the customer list.
+
+---
+
+## Tags
+
+Tags are **free-text labels** you attach to a customer. They appear as colored chips on the profile and the list.
+
+### Add a tag
+
+1. Open a customer profile
+2. **Tags** card → click the input → type `vip`, hit Enter
+3. Repeat for additional tags (a customer can have many)
+
+### Common tag patterns
+
+| Pattern | Use for |
+|---------|---------|
+| Segments | `vip`, `wholesale`, `corporate`, `staff`, `walk-in` |
+| Behavior | `repeat-buyer`, `lapsed`, `at-risk`, `champion` |
+| Source | `facebook-ads`, `google-organic`, `referral`, `walk-in-traffic` |
+| Region | `gulshan`, `chittagong`, `dhaka-north` |
+| Tier opt-in | `loyalty-pilot`, `early-access`, `beta-tester` |
+
+### Filter by tag
+
+On the customers list page, click **Filter** → **Tag** → pick one or many. The list narrows immediately.
+
+### Why tags > custom fields
+
+Custom fields lock you into a schema before you know what you need. Tags let you experiment ("let's tag everyone who bought during the Eid sale and see how they behave next month"). When a tag stabilizes into something you query often, promote it to a real attribute later.
+
+---
+
+## Customer Type
+
+Set on the profile. Affects:
+
+- **Default price list** — wholesale customers see wholesale prices in POS / online
+- **Credit policy** — distributors and wholesale typically get credit; retail does not (by convention)
+- **Reports** — slice revenue + AOV by customer type
+
+Change it any time on the profile dropdown. Existing orders aren't re-priced — only new ones.
+
+---
+
+## Revenue Tier (Auto)
+
+Computed from `stats.revenue.lifetime`. Ranges:
+
+| Tier | Lifetime spend |
+|------|----------------|
+| Bronze | < BDT 10,000 |
+| Silver | BDT 10,000 – 49,999 |
+| Gold | BDT 50,000 – 99,999 |
+| Platinum | ≥ BDT 100,000 |
+
+This is a pure analytics view — it does NOT confer benefits. For benefit-driven tiers (free shipping, discount %), use the [Loyalty module's tiers](/commerce-bd/docs/loyalty/tiers).
+
+Use revenue tier for:
+- "Who are our top 100 customers?" → filter by Platinum/Gold
+- "Which segment has the highest AOV?" → group revenue by tier
+- "Should we send VIP gifts?" → start with Platinum + tag
+
+---
+
+## Combining Filters
+
+The list page supports multi-filter:
+
+```
+Type = wholesale AND tag = vip AND revenueTier ∈ {Gold, Platinum}
+```
+
+This is your "high-value B2B accounts to nurture" segment. Save the filter combination by bookmarking the URL — the params are encoded in the query string.
+
+---
+
+## Bulk Operations
+
+Once you have a filtered list, bulk actions appear in the table header:
+
+- **Apply tag to all** — add a tag to every visible row
+- **Remove tag from all** — opposite
+- **Export CSV** — download for offline analysis or marketing tool import
+
+> Bulk delete is **NOT** available — by design. Customers carry order history; deleting them orphans your accounting. Use **Deactivate** if needed.
+
+---
+
+## Segment → Action Examples
+
+| Segment | Tag pattern | Likely action |
+|---------|-------------|---------------|
+| Lapsed VIPs | `vip` + last order > 90 days | Re-engagement promo, personal outreach |
+| Wholesale champions | type=`wholesale` + Platinum + tag `repeat-buyer` | Volume discount renewal, account-manager call |
+| New retail | type=`retail` + first order < 30 days | Welcome series, second-order promo |
+| At-risk credit | tag `at-risk` + open invoices > 60 days | Credit hold, finance follow-up |
+
+---
+
+## What's next?
+
+- [Profile & Addresses](/commerce-bd/docs/customers/profile-and-addresses) — what each profile holds
+- [Promotions](/commerce-bd/docs/promotions/programs) — target programs by customer tag
+- [Loyalty Tiers](/commerce-bd/docs/loyalty/tiers) — benefit-driven tier system

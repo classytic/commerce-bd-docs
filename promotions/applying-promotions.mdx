@@ -1,0 +1,205 @@
+# Applying Promotions
+
+How promotions actually attach to a cart — the evaluate → commit → rollback lifecycle, voucher entry at POS, auto-apply on storefront, and what to do when things go wrong.
+
+---
+
+## Three-step lifecycle
+
+Every promo application goes through three stages. This is intentional — it means we never commit to a discount until we're sure the cart and payment are good.
+
+```
+evaluate(cart)
+    │         Returns a candidate set. Calculates discount.
+    │         Creates a pending Evaluation record. No side effects.
+    ▼
+commit(evaluationId, orderId)
+    │         Ties the evaluation to a real order. Decrements voucher
+    │         usage counters. Marks single-use vouchers consumed.
+    │         Pending → committed.
+    ▼
+rollback(evaluationId)   (only if something fails)
+              Reverses commit. Releases voucher. Returns promo to pool.
+```
+
+Why: when a customer types a voucher at checkout and then their payment fails, we don't want the voucher's "single use" counter to burn. The evaluate-only preview keeps vouchers pristine until payment confirms.
+
+---
+
+## Preview vs evaluate
+
+Two endpoints, nearly identical:
+
+| Endpoint | Creates record? | Use for |
+|---|---|---|
+| `/promotions/evaluate/preview` | No | Showing cart totals as the customer adds items |
+| `/promotions/evaluate` | Yes — Evaluation row | The final cart state before checkout |
+
+The storefront uses `preview` continuously as the cart changes, then calls `evaluate` once the customer clicks checkout. The evaluate response includes an `evaluationId` which the order placement then passes to `commit`.
+
+---
+
+## Storefront auto-apply
+
+On the storefront, cart evaluation runs automatically:
+
+1. Customer adds item → cart fragment re-renders → preview fires
+2. Preview returns matching auto-applied programs
+3. Cart shows "10% off applied!" line with the savings
+4. Customer types voucher code → preview fires again with `voucherCode`
+5. Voucher validates → stacks / replaces per stacking rules → savings update
+6. Customer clicks **Place Order** → `evaluate` fires, `evaluationId` captured
+7. Order placement forwards `evaluationId` + `cartHash` → `commit`
+
+The **cartHash** is a tamper guard. If the cart changed between evaluate and commit (e.g., tab open for hours, prices updated, inventory sold out), the cartHash mismatches and the commit rejects with `CART_HASH_MISMATCH`. Frontend re-evaluates and tries again.
+
+---
+
+## POS voucher application
+
+At the POS terminal:
+
+1. Scan items into cart as normal
+2. Click **Apply Code** button
+3. Type or scan the voucher
+4. System calls `preview` with the code
+5. Response shows:
+   - ✅ Valid — applies and shows discount
+   - ❌ Invalid — reason shown (expired, wrong customer, min-amount not met, etc.)
+6. If valid, tender payment normally
+7. On payment, evaluate → commit fires automatically
+
+**Without a code, auto-apply programs run anyway** — e.g., "all Sunday orders get 5% off" doesn't require the cashier to do anything.
+
+**Removing a code** — click the X next to the applied code. This un-applies locally; no backend call until next evaluate.
+
+---
+
+## Admin-placed orders
+
+Admins creating orders by hand can:
+
+- Enter a voucher code (same flow as POS)
+- **Manually apply a program** that wouldn't auto-match — e.g., the order missed the min-amount cutoff by ৳50 but you want to honor the discount anyway
+
+Manual application leaves an audit entry with the admin user id. Use this sparingly — frequent manual overrides indicate a program rule that needs fixing, not special pleading.
+
+---
+
+## Evaluation results
+
+The evaluate response looks like:
+
+```
+{
+  evaluationId: "...",
+  applied: [
+    { programId, programName, type, discountAmount, ... }
+  ],
+  rejected: [
+    { programId, programName, reason: "MIN_AMOUNT_NOT_MET", ... }
+  ],
+  summary: {
+    subtotal: 6000,
+    discountTotal: 900,
+    finalTotal: 5100
+  }
+}
+```
+
+The `rejected` list is useful for showing "you're ৳300 away from free shipping" upsells. The storefront uses this to prompt customers to add more items.
+
+---
+
+## What commit does
+
+When commit fires:
+
+- Evaluation row transitions pending → committed
+- Voucher usage counter decrements (`remainingUses -= 1`)
+- Single-use vouchers mark as consumed
+- Per-customer redemption counters increment
+- Program analytics counters increment
+
+**Idempotent**: committing the same evaluationId twice is a no-op; the second call returns the existing commit record. Needed because network retries happen.
+
+**Not idempotent**: calling commit with a *different* orderId for the same evaluation is a conflict error. One evaluation, one order.
+
+---
+
+## Rollback
+
+When do you rollback?
+
+- **Payment fails** after order placement succeeds
+- **Order cancelled** before payment confirms
+- **Fraud detected** post-payment (chargeback, reversal)
+
+Rollback:
+
+- Reverses voucher usage counter (+1 back to pool)
+- Releases single-use lock
+- Decrements per-customer redemption
+- Adjusts analytics counters
+- Marks Evaluation as rolled-back (not deleted — audit trail preserved)
+
+Rollback is idempotent for safety. Double-calling is a no-op.
+
+---
+
+## Per-customer caps
+
+Programs can cap uses per customer. Common patterns:
+
+- **One per customer** — `maxUsesPerCustomer: 1`. Typical for "first-order 10% off."
+- **N per cart, unlimited carts** — no per-customer cap, but `maxUsagesPerCart` set.
+- **Lifetime limit** — `maxUsesPerCustomer: 10`. Common for loyalty-tier discounts.
+
+When a customer hits the cap, the program silently drops from their evaluation (not an error — just not a candidate). Storefront UX should still show "this code was used up" if a specific code is typed.
+
+---
+
+## Common failure codes
+
+| Code | Meaning | Fix |
+|---|---|---|
+| `VOUCHER_NOT_FOUND` | Wrong code typed | Check spelling, check code is active |
+| `VOUCHER_EXPIRED` | Past end date | Show expiry, offer alternate |
+| `VOUCHER_EXHAUSTED` | Usage limit reached | Show "no longer available" |
+| `MIN_AMOUNT_NOT_MET` | Cart below threshold | Show "add ৳X more" |
+| `CUSTOMER_NOT_ELIGIBLE` | Targeting excluded this customer | Silent drop usually; debug via preview |
+| `CART_HASH_MISMATCH` | Cart changed between eval + commit | Auto-retry evaluate, then commit |
+| `PROGRAM_INACTIVE` | Program was paused | Re-activate or remove the code from cart |
+
+---
+
+## Analytics
+
+Each committed evaluation counts toward:
+
+- **Program performance** (total uses, total discount given, revenue generated)
+- **Voucher performance** (per-code usage, conversion, average order value)
+- **Customer LTV impact** (did promo users stick around?)
+
+View under **Promotions → {program} → Analytics**. COD orders contribute to analytics on `delivered`, not placement — to avoid counting orders that never completed.
+
+---
+
+## Permissions
+
+| Action | Who |
+|---|---|
+| Preview evaluation | Any authenticated user |
+| Commit (happens during order placement) | System only — handled by order service |
+| Rollback | System (on failure) + `admin` (manual) |
+| Manually apply a non-matching program | `admin` only |
+| View analytics | `admin`, `branch_manager` |
+
+---
+
+## Related
+
+- [Cart Evaluation Flow](/promotions/evaluation) — the internal evaluation pipeline (deeper)
+- [Stacking & Priority](/promotions/stacking-and-priority) — which programs win when multiple match
+- [Voucher Codes](/promotions/vouchers) — code creation + management
+- [Loyalty at Checkout](/loyalty/checkout-integration) — how loyalty redemption interacts with promos

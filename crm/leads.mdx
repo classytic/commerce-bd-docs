@@ -1,0 +1,122 @@
+---
+title: CRM Leads
+description: Capture inbound leads, qualify them, and convert qualified leads into opportunities
+---
+
+# Leads
+
+A **lead** is a prospect at the top of the funnel — someone who showed interest but isn't yet a customer.
+
+> The dashboard UI for Leads is in development. Operations below describe the workflow + the underlying API.
+
+---
+
+## Lead Lifecycle
+
+```
+new   →   contacted   →   qualified   →   converted    (success — Opportunity created)
+                  ↓                ↓
+              nurturing       disqualified            (dead end OR re-engage later)
+```
+
+Five statuses, four transitions. Each transition is auditable and triggers an event.
+
+| Status | What it means |
+|--------|--------------|
+| `new` | Just captured. Hasn't been touched yet. |
+| `contacted` | At least one outreach attempt logged. Awaiting response or qualification. |
+| `qualified` | Has budget, authority, need, and timeline (BANT) — worth opening as an Opportunity. |
+| `converted` | An Opportunity (and Account + Contact) was created from this lead. Terminal. |
+| `disqualified` | Not a fit — wrong budget, wrong product, no decision-maker. Includes a reason string. |
+| `nurturing` | Disqualified earlier but worth re-engaging in N months. |
+
+---
+
+## Capture a Lead
+
+Leads land in the system three ways:
+
+1. **Inbound form** — your website POSTs to `POST /api/v1/crm/leads` with `{ name, email, source, ... }`
+2. **Manual entry** — a salesperson types in a lead from a phone call or business card
+3. **Bulk import** — CSV upload through `POST /api/v1/crm/leads` in a loop (most common after a trade show or event)
+
+The system **deduplicates by email per branch** — the same `(organizationId, email)` pair will hit a unique-index error on the second insert, so you can safely re-run an import without creating duplicates.
+
+---
+
+## Qualify a Lead
+
+Once you've made first contact:
+
+| Action | Endpoint | What it does |
+|--------|----------|--------------|
+| **Mark contacted** | `POST /crm/leads/:id/action { action: 'markContacted' }` | Status → `contacted`. Records timestamp + actor. |
+| **Qualify** | `POST /crm/leads/:id/action { action: 'qualify' }` | Status → `qualified`. The lead is now ready to convert. |
+| **Disqualify** | `POST /crm/leads/:id/action { action: 'disqualify', disqualifyReason: '...' }` | Status → `disqualified`. **Reason is required.** |
+| **Nurture** | `POST /crm/leads/:id/action { action: 'nurture' }` | Re-opens a disqualified lead — useful when a 6-month follow-up is appropriate. |
+
+---
+
+## Convert a Qualified Lead
+
+This is the moment the lead becomes a real sales motion.
+
+```
+POST /crm/leads/:id/action { action: 'convert', payload: {
+  pipelineId: 'pl_default',
+  opportunityName: 'Acme — Q2 platform deal',
+  amount: 50000,
+  expectedCloseAt: '2026-06-30',
+} }
+```
+
+The system **atomically**:
+
+1. Creates an **Account** (or reuses one if `domain` matches an existing account)
+2. Creates a **Contact** linked to that Account
+3. Creates an **Opportunity** at the first stage of the chosen pipeline
+4. Stores the cross-references on the Lead (`convertedAccountId`, `convertedContactId`, `convertedOpportunityId`)
+5. Sets Lead status → `converted` (terminal — can't be undone)
+6. Publishes `crm:lead.converted` event → Customer.crm.stage = `prospect`
+
+Conversion is a single transaction — if any step fails, none of the records are created.
+
+---
+
+## Lead Scoring
+
+Each lead carries an optional **score** (0–100) computed by the lead scoring engine. Higher scores represent better fit, urgency, or engagement.
+
+The score is updated automatically when:
+- A new activity is logged against the lead (the more recent / higher-effort, the more boost)
+- The lead's profile fields are completed (job title, company size, etc.)
+- A custom scoring rule fires (configurable per branch)
+
+Use the score to prioritize your workday — a salesperson should call leads in score-descending order.
+
+---
+
+## Activities and Notes
+
+Every interaction with a lead becomes either an **Activity** (call, email, meeting, task with a `scheduledAt`) or a **Note** (free text comment). Both attach to the lead via `subjectKind: 'lead'` + `subjectId`.
+
+See [Activities & Notes](/commerce-bd/docs/crm/activities-and-notes) for the full pattern.
+
+---
+
+## Common Pitfalls
+
+| Symptom | Cause + fix |
+|---------|-------------|
+| "Email already exists" error on import | Dedup on `(orgId, email)` — the lead is already in the system. Update the existing one instead. |
+| Disqualify call returns 400 | You forgot the `disqualifyReason` string. It's required. |
+| Convert returns 400 | Likely missing `pipelineId` — every convert needs a target pipeline. |
+| Re-engaged lead disappeared | `nurture` action only works from `disqualified`. From `converted`, you'd open a new lead. |
+
+---
+
+## What's next?
+
+- [Opportunities](/commerce-bd/docs/crm/opportunities) — what happens after conversion
+- [Pipelines](/commerce-bd/docs/crm/pipelines) — the stages your opportunities flow through
+- [Activities & Notes](/commerce-bd/docs/crm/activities-and-notes) — logging your work

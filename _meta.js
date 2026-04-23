@@ -1,0 +1,16 @@
+export default {
+  index: 'Welcome',
+  platform: 'Platform Settings',
+  products: 'Products',
+  customers: 'Customers',
+  suppliers: 'Suppliers',
+  inventory: 'Inventory',
+  'warehouse-advanced': 'Warehouse (Advanced)',
+  sales: 'Sales',
+  pos: 'POS',
+  logistics: 'Logistics',
+  accounting: 'Accounting',
+  promotions: 'Promotions',
+  loyalty: 'Loyalty',
+  crm: 'CRM',
+}

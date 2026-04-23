@@ -1,0 +1,121 @@
+# Order Refunds
+
+When money needs to go back to a customer. There are **two paths** — pick the right one, because they have different accounting consequences and different permissions.
+
+---
+
+## Which path do I use?
+
+```
+Did goods ship AND get returned?
+ ├─ Yes  →  Use the Returns / RMA flow. Handles inspection, restocking,
+ │          and refund in one workflow. See Returns & RMA.
+ └─ No   →  Use Issue Refund (this page). For: cancelled orders,
+            failed deliveries, duplicate charges, customer disputes
+            before shipment.
+```
+
+The RMA path is richer (quality inspection, per-line restocking, COGS reversal). Issue Refund is the "quick cancel + return money" path for orders that never became stock movements.
+
+---
+
+## Issue Refund (direct)
+
+From the order detail page, click **Issue Refund**. Enter:
+
+| Field | Notes |
+|---|---|
+| **Amount** | Defaults to the full captured amount. Partial refunds allowed — less than or equal to what was captured. |
+| **Reason** | Free text, shown on the audit trail. |
+| **Restock items** | Optional checkbox. Leave off if goods never left the warehouse. |
+
+---
+
+## What happens on submit
+
+**Prepaid orders** (SSLCommerz, card, already-verified bKash/bank):
+
+1. Payment gateway refund is initiated (real money movement)
+2. Journal posts:
+
+| Account | Dr | Cr |
+|---|---|---|
+| 4111 Domestic Sales Revenue (portion being refunded) | (refund amt) | |
+| 2132 VAT Output Payable | (VAT portion) | |
+| 1122 / 1112 / 1111 (original receipt account) | | (refund amt) |
+
+3. Order payment state → `refunded` (or `partially_refunded` if partial)
+4. `metadata.refundedAt` stamped — re-clicking returns `409 ALREADY_REFUNDED`, no double-refund
+
+**COD orders, unsettled** (courier hasn't remitted yet):
+
+1. No cash moves — there was no cash to begin with
+2. The same reversal journal as a COD cancellation posts (see [COD Settlement](/accounting/cod-settlement))
+3. A/R for this order clears
+
+**COD orders, already settled** (courier paid you, you paid suppliers out of it):
+
+1. The endpoint returns `400 COD_SETTLED_USE_RMA`
+2. You must use the RMA flow, because at this point the money left the courier's hands and arrived in yours — any reversal is a genuine cash outflow back to the customer, which needs the full return workflow for audit
+
+---
+
+## Partial refunds
+
+Supported for both prepaid and COD-unsettled. Pass `amount` less than the captured total. The order stays in `partially_refunded` state on the metadata layer. You can partial-refund multiple times as long as the running total stays under the captured amount.
+
+Example: ৳5,000 order, refund ৳2,000 → 1st refund; refund ৳1,500 → 2nd refund; ৳1,500 still refundable.
+
+---
+
+## Restock flag
+
+If you check **Restock items**:
+
+- Stock movement reverses (customer location → stock location)
+- COGS reversal posts: `Dr 1165 Inventory, Cr 5111 COGS` for the cost of the returned items
+- The reversal is keyed by order + line — idempotent, safe to retry
+
+Don't check Restock for:
+- Digital goods / services (no physical stock)
+- Orders that failed before shipment (nothing to restock)
+- Damaged goods you don't want back in saleable stock — use RMA with a "reject" inspection outcome instead
+
+---
+
+## Invariants the system enforces
+
+- **Can't refund more than captured** — partial refund total ≤ original capture
+- **Can't refund twice** — `metadata.refundedAt` blocks double-submission
+- **Can't refund a COD before settlement via this path** — use the cancellation flow
+- **Can't refund settled COD via this path** — returns `400 COD_SETTLED_USE_RMA`, forces the RMA workflow
+
+---
+
+## Audit trail
+
+Every refund leaves:
+
+- A row in **Payment History** on the order (status: refunded, linked to original capture)
+- A journal entry visible in **General Ledger** with `sourceRef = { sourceModel: 'Order', sourceId: <orderId> }`
+- Refund reason + user + timestamp on the order's activity log
+
+For prepaid, the gateway's refund ID is stored too — useful when reconciling SSLCommerz / Stripe / card statements at month-end.
+
+---
+
+## Permissions
+
+| Role | Direct refund | RMA-path refund |
+|---|---|---|
+| `admin`, `branch_manager` | Yes | Yes |
+| `cashier` | Same-day cash refund only | No |
+| `store-staff` | No | Initiate return only (refund requires manager) |
+
+---
+
+## Related
+
+- [Returns & RMA](/inventory/returns-rma) — the full-return workflow (required for settled-COD or physical-return cases)
+- [COD Settlement](/accounting/cod-settlement) — why settled COD blocks this path
+- [Payment Verification](/accounting/payment-verification) — the step before refund becomes possible

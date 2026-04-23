@@ -1,0 +1,77 @@
+# Recurring Invoices & Payment Reminders
+
+Set up subscription billing and automatic payment follow-ups.
+
+---
+
+## Recurring invoices
+
+For monthly subscriptions, rent, or any repeating charge:
+
+1. Create a **template invoice** with the line items and amount
+2. Go to **Invoices** > **Recurring** and click **Create Recurring Config**
+3. Choose:
+   - **Frequency** — daily, weekly, monthly, quarterly, yearly
+   - **Start date** — when to begin
+   - **End date** — when to stop (optional, leave blank for indefinite)
+   - **Auto-post** — post the invoice immediately (or leave as draft for review)
+   - **Auto-send** — email the invoice to the customer on creation
+
+The system generates a new invoice on schedule. Each generated invoice is linked to the recurring config so you can track the history.
+
+> **Stripe/payment provider?** If you use Stripe or another billing system, you can link the recurring config to the external subscription ID. The system tracks both.
+
+---
+
+## Payment reminders (dunning)
+
+When invoices go overdue, the system can send reminders automatically.
+
+### Default schedule
+
+| Days relative to due date | What happens |
+|---------------------------|--------------|
+| **-3 days** (before due) | Friendly reminder: "Your invoice is due in 3 days" |
+| **Due date** | "Your invoice is due today" |
+| **+7 days** | First overdue notice |
+| **+14 days** | Second overdue notice |
+| **+30 days** | Final notice |
+
+Each reminder is tracked — the invoice shows how many reminders were sent and when.
+
+### Grace period
+
+By default, there is a **3-day grace period** after the due date before the system marks an invoice as overdue. This prevents false alarms for invoices that are paid a day or two late.
+
+---
+
+## Late fees
+
+If enabled, the system can automatically create a separate late fee invoice for overdue amounts:
+
+- **Rate** — percentage of overdue amount (default: 2%)
+- **Period** — charge once, daily, or monthly
+- **Grace days** — days after due date before late fees start
+
+Late fee invoices are linked to the original invoice. They appear as separate line items in your reports.
+
+> Late fees are disabled by default. Ask your admin to enable them if needed.
+
+---
+
+## Manual triggers
+
+You can trigger dunning or recurring processing manually:
+
+1. Go to **Invoices**
+2. Click **Process Dunning** to send reminders for all overdue invoices now
+3. Click **Process Recurring** to generate all scheduled invoices now
+
+This is useful for testing or when you need to catch up after a system pause.
+
+---
+
+## What's next?
+
+- [Reports & Analysis](/dashboard/accounting/learn/reports) — aging, overdue, and financial reports
+- [Roles & Permissions](/dashboard/accounting/learn/permissions) — who can do what

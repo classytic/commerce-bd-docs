@@ -1,0 +1,98 @@
+# Voucher Codes
+
+Vouchers are codes customers type at checkout. Only programs with **trigger mode = code** need vouchers.
+
+---
+
+## Generate a Single Code
+
+For a one-off promo code (e.g. `EID2026`, an influencer's `SAARA20`):
+
+1. Open the program
+2. Click **Generate Voucher**
+3. Pick **Single**
+4. (Optional) type the literal code you want — leave blank for auto-generation
+5. (Optional) attach a **Customer ID** to lock the code to one customer
+6. (Optional) set an **Expiry Date**
+7. Click **Create**
+
+The new code appears in the **Vouchers** tab and is usable immediately if the program is active.
+
+[Open Promotions](/dashboard/promotions)
+
+---
+
+## Generate a Batch
+
+For mass campaigns (e.g. 1000 unique codes for an SMS blast):
+
+1. Open the program
+2. Click **Generate Voucher → Batch**
+3. Enter **Count** (how many codes)
+4. (Optional) **Expiry Date** — applied to every code in the batch
+5. Click **Generate**
+
+Codes are auto-generated using a secure 8-character alphanumeric format (no ambiguous characters). Download as CSV from the batch's detail page.
+
+> Each generated voucher has a default usage limit of **1** — once it's been used in an order, it's marked `used` and cannot be reused.
+
+---
+
+## Validate a Code
+
+The POS and online checkout call the validate endpoint automatically when the customer types a code. You don't usually do this manually — but for testing:
+
+1. Go to **Promotions > Vouchers**
+2. Find the code
+3. Click **Validate**
+
+Possible results:
+
+- **Valid** — code is active, within expiry, and has remaining uses
+- **Used** — already redeemed
+- **Expired** — past `expiresAt`
+- **Cancelled** — manually cancelled (see below)
+- **Exhausted** — usage limit hit
+
+---
+
+## Cancel a Voucher
+
+If a code leaks publicly or you change your mind:
+
+1. Go to **Promotions > Vouchers**
+2. Find the code
+3. Click **Cancel**
+
+Cancelled codes immediately stop working. Cancellation is **logged with your user ID** for audit. You cannot un-cancel — generate a new code if needed.
+
+---
+
+## Look Up by Code
+
+Customer support flow: a customer asks "is my code still valid?". Use the lookup:
+
+1. Go to **Promotions > Vouchers**
+2. Type the code in the search bar — exact match
+3. The voucher's status, customer link, expiry, and redemption history all appear
+
+This is also accessible programmatically via `GET /promotions/vouchers/code/:code`.
+
+---
+
+## Gift Cards: A Special Voucher
+
+For programs of type `gift_card`, the voucher carries an **initial balance** instead of a discount rule:
+
+- **Initial Balance** — e.g. `5000` (BDT 5000 stored value)
+- The voucher can be partially redeemed across multiple orders until the balance hits zero
+- Top-ups are supported — admins can add balance to an existing gift card
+
+Gift cards are tracked separately in **Promotions > Gift Cards** with the running balance and full transaction history.
+
+---
+
+## What's next?
+
+- [Cart Evaluation Flow](/dashboard/promotions/learn/evaluation) — what happens when a code is applied
+- [Discount Programs](/dashboard/promotions/learn/programs) — design the program before generating codes

@@ -1,0 +1,226 @@
+---
+title: Dispatch & Quality
+description: Outbound shipments — manifests, dock doors, appointments — and inspection points with pass/fail dispositions
+---
+
+# Dispatch & Quality
+
+These are the **enterprise-tier** outbound workflows. Both off by default — your platform admin enables `FLOW_DISPATCH=true` and/or `FLOW_QUALITY=true` along with `FLOW_MODE=enterprise`.
+
+---
+
+## Dispatch — Outbound Shipments
+
+[Open Dispatch](/dashboard/warehouse/dispatch)
+
+Bundle outbound moves into **manifests**, schedule them against **dock doors** with **appointments**, and track shipment status from packed to delivered.
+
+### Three Concepts
+
+| Concept | What it is |
+|---------|------------|
+| **Manifest** | A bundle of moves going to one destination — typically tied to one or more orders/transfers |
+| **Dock door** | A physical loading bay (e.g. "Dock 1", "Dock 2 — refrigerated") |
+| **Appointment** | A scheduled time slot at a dock for inbound or outbound activity |
+
+### Lifecycle of a Manifest
+
+```
+draft  →  packed  →  labeled  →  dispatched  →  delivered
+```
+
+| State | What it means |
+|-------|---------------|
+| **draft** | Manifest exists, no goods packed yet |
+| **packed** | Goods physically packed against the manifest's lines |
+| **labeled** | Carrier label/AWB printed and attached |
+| **dispatched** | Carrier picked up — goods left the building |
+| **delivered** | Recipient confirmed receipt (carrier callback or manual mark) |
+
+### Create a Manifest
+
+1. **Warehouse > Dispatch > Manifests** → **New Manifest**
+2. Fill in:
+   - **Move group ID** — the picks/transfers being shipped
+   - **Dock door** — where the carrier picks up
+   - **Carrier reference** (optional — courier tracking number, AWB)
+   - **Notes**
+3. Save as `draft`
+
+Now physically pack the goods, scan items into the manifest as you pack (status auto-moves to `packed`).
+
+### Schedule Dock Appointments
+
+Appointments coordinate carrier arrivals so you don't have 3 trucks at the same dock.
+
+1. **Warehouse > Dispatch > Appointments** → **New Appointment**
+2. Pick:
+   - **Dock door**
+   - **Type** (`inbound` for receiving, `outbound` for dispatch)
+   - **Scheduled start** + **end** time
+   - **Counterparty** (carrier name or supplier)
+3. Save
+
+When the truck arrives:
+- Click **Check In** on the appointment (records actual arrival vs scheduled)
+- Click **Complete** when loading/unloading is done
+- The system tracks dwell time + on-time performance per carrier
+
+### Dispatch a Manifest
+
+After packing + labeling:
+
+1. Open the manifest → **Dispatch**
+2. Confirm
+
+The system:
+- Sets `manifest.status = dispatched`
+- Records `shippedAt = now`
+- Fires `dispatch:manifest.dispatched` event (used by carrier integrations to send shipment notifications)
+- Marks all moves in the manifest as `out` from your warehouse
+
+The corresponding orders update to `shipped` status; customers get notification emails.
+
+### Multi-Manifest Orders
+
+A single large order might split across multiple manifests (e.g. cold goods on one truck, dry on another). Each manifest dispatches independently — the order shows multiple shipments with separate tracking.
+
+---
+
+## Quality — Inspection Points
+
+[Open Quality](/dashboard/warehouse/quality)
+
+Define **inspection points** that fire on receipt, transfer, or shipment. Generate **checks** for each move group, record results, apply **dispositions**.
+
+### Anatomy of an Inspection Point
+
+| Field | Meaning |
+|-------|---------|
+| **Trigger** | `receipt`, `transfer`, or `shipment` |
+| **Scope** | Specific SKU(s), category, or all |
+| **Inspection rules** | What to check (e.g. "no visible damage", "expiry > 30 days", "weight ±5%") |
+| **Sample size** | All units, every Nth, or random sample |
+| **Required** | If true, downstream moves block until disposition is set |
+| **Pass criteria** | What "approved" looks like |
+
+### Create an Inspection Point
+
+1. **Warehouse > Quality > Points** → **New Point**
+2. Fill in:
+   - **Trigger** (e.g. `receipt`)
+   - **SKUs / category** (e.g. all dairy products)
+   - **Rules** in plain text (the inspector reads + judges)
+   - **Sample size** (e.g. "5 units per pallet")
+   - **Required** = true
+3. Save
+
+Now every receipt move for matching SKUs auto-generates inspection checks.
+
+### Generate Checks
+
+Auto-generated when matching moves happen. Or manually:
+
+```
+POST /quality/checks/generate {
+  moveGroupId: 'mg_receipt_2026_001',
+  triggerOn: 'receipt'
+}
+```
+
+The system creates one **check** per (move line × sample size). Each check has:
+- **Status**: `pending`
+- **Disposition**: not yet set
+- **Result fields**: filled by the inspector
+
+### Record a Check Result
+
+The inspector physically inspects, then:
+
+1. Open the check
+2. Enter:
+   - **Passed**: yes/no
+   - **Defect count** (if any)
+   - **Notes** (e.g. "Box damaged but contents intact")
+3. Save → status moves to `recorded`
+
+---
+
+### Apply a Disposition
+
+After recording, decide what happens to the units:
+
+| Disposition | Effect |
+|-------------|--------|
+| **accept** | Stock proceeds to normal storage |
+| **reject_scrap** | Units written off → stock decremented + Loss account credited |
+| **reject_return** | Units sent back to supplier → reverse move to vendor location |
+| **hold** | Units quarantined → moved to quality_hold location, blocked from sale until released |
+
+### Reject Scrap — Posting
+
+```
+DR  Loss Account (5xxx-loss)
+CR  Inventory (1xxx)            amount: layer cost × quantity
+```
+
+The units are gone from inventory, the loss hits the P&L. Always include a reason code (damaged, expired, contaminated, etc.) for analysis.
+
+### Reject Return
+
+A return move is created from your warehouse to the vendor location. Treat the supplier as expecting the return — coordinate with them to issue a credit note. See [Suppliers > A/P Ledger](/commerce-bd/docs/suppliers/ap-ledger).
+
+### Hold
+
+The units don't leave but they can't be sold. Useful when:
+- Awaiting lab test results
+- Waiting on regulatory clearance
+- Pending root-cause investigation
+
+To release, post a follow-up disposition (accept or reject) once the verdict is in.
+
+---
+
+## Required Inspection — Hold Behavior
+
+When an inspection point is `required: true`:
+
+- The triggering move group enters status `awaiting-quality`
+- Any subsequent move on those goods is blocked
+- Once all checks have a disposition, the move group continues normally
+
+This prevents accidental sale of un-inspected stock — critical for regulated products (food, pharma, regulated electronics).
+
+---
+
+## Reporting
+
+For dispatch:
+- **On-time dispatch %** — manifests dispatched within their scheduled appointment window
+- **Avg pack time** — time between manifest creation and dispatched status
+- **Carrier performance** — group by carrier, see avg dwell time
+
+For quality:
+- **Defect rate by supplier** — group rejected/scrap dispositions by supplier → identify problem vendors
+- **Pass rate by inspection point** — see which inspections rarely fail (candidates to relax) and which often fail (root-cause investigations)
+- **Hold-time avg** — how long units stay in hold before disposition (efficiency metric)
+
+---
+
+## Common Pitfalls
+
+| Symptom | Cause + fix |
+|---------|-------------|
+| Dispatch shows 503 / "service not available" | `FLOW_DISPATCH=false` in platform config. Ask admin to enable. |
+| Quality page 503 | `FLOW_QUALITY=false`. Same fix. |
+| Receipt blocks indefinitely | Inspection point is `required` and checks aren't being recorded. Find the move group, complete the inspections. |
+| Manifest dispatched but tracking blank | Carrier reference field was left empty. Update with the AWB. |
+| Reject_scrap doesn't post to GL | Check the GL account mapping for "Loss Account" in platform config. Most likely missing. |
+
+---
+
+## What's next?
+
+- [Cycle Counting & Audit](/commerce-bd/docs/warehouse-advanced/cycle-counting) — verify what's truly in stock after dispatches/scraps
+- [Lots & Traceability](/commerce-bd/docs/warehouse-advanced/lots-and-traceability) — recall capability links to dispatch history
+- [Cost & Valuation](/commerce-bd/docs/warehouse-advanced/cost-and-valuation) — what's valued at what cost on dispatch

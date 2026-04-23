@@ -1,0 +1,86 @@
+# Service provider & VDS basics
+
+You provide services (consulting, design, advertising, security, cleaning,
+construction, etc.) and bill corporate clients. NBR requires those clients
+to **withhold VAT at source** when paying you — this is VDS (VAT Deducted
+at Source).
+
+## What VDS means for you
+
+1. You invoice the client: **service value + 15% VAT** (as normal).
+2. At payment time, the client deducts VDS from what they pay you.
+3. Client deposits the VDS directly to NBR.
+4. Client issues you a **Mushak 6.6 certificate** as proof.
+5. You claim the VDS as a credit against your own Mushak 9.1 line 15.
+
+**Net cash flow**: you receive the service value; the client pays NBR
+the VAT. The VDS certificate gets you the credit on filing.
+
+## Example — BDT 100,000 professional consulting
+
+```
+  Invoice:           BDT 100,000
+  + VAT 15%:         BDT  15,000
+  = Gross:           BDT 115,000
+
+Client (CORP) deducts VDS @ 15% of service value:
+  VDS withheld:      BDT  15,000
+
+  Client pays you:   BDT 100,000   (gross − VDS)
+  Client pays NBR:   BDT  15,000
+  You get 6.6 for:   BDT  15,000
+```
+
+Your own VAT liability that month: BDT 15,000 output − 15,000 VDS credit
+= 0 due. (Simplified — actual return also nets input VAT.)
+
+## VDS rates (who deducts how much)
+
+Depends on BOTH the **payer category** and the **service category**.
+NBR publishes this matrix via SRO-240-Law/2021/163.
+
+| Service | GOVT | CORP | BANK | NGO |
+|---|---|---|---|---|
+| Professional consulting | 15% | 15% | 15% | 15% |
+| Construction contractor | 7.5% | 7.5% | — | — |
+| Security | 10% | 10% | — | — |
+| Cleaning | 10% | 10% | — | — |
+| Rent (commercial) | 15% | 15% | — | — |
+| Catering | 10% | 10% | — | — |
+| Printing | 10% | 10% | — | — |
+| Advertising | 15% | 15% | — | — |
+| IT / software | 5% | 5% | — | — |
+| Transport / freight | 5% | 5% | — | — |
+
+Our system looks up the correct rate via `bd-vat.getVdsRate(payer, service)`.
+
+## What the system does automatically
+
+- **You as seller**: invoice goes out at full 15%. When the client pays
+  and sends Mushak 6.6, record it in `/dashboard/accounting/vds-receivable`
+  — the 1153 VDS Receivable balance feeds line 15 of your 9.1 return.
+- **You as buyer** (paying a service supplier): if your branch is
+  corporate / govt / bank / NGO, you withhold VDS at payment time.
+  The supplier-payment contract splits cash: part to supplier, part to
+  2136 VDS Payable (to deposit to NBR within 15 days).
+
+## Common questions
+
+**What if the client doesn't send Mushak 6.6?**
+Chase them. Your 1153 Receivable ages until you have the certificate.
+Without it, you can't claim the credit on your 9.1 return — NBR will
+reject the line.
+
+**Do I charge VAT to clients under BDT 10 crore turnover?**
+Yes — they still pay your 15% VAT. Only entities with turnover ≥
+BDT 10 crore are VDS-withholding payers. Smaller clients pay you
+the full gross.
+
+**Deposit deadline?**
+VDS withheld must be deposited to NBR within **15 days** of deduction.
+Late deposits trigger penalties.
+
+## Related
+
+- [Business types](business-types.md)
+- [VAT basics](vat-basics.md)

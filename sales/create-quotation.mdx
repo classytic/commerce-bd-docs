@@ -1,0 +1,110 @@
+# Create a Quotation
+
+How to build a draft quotation from scratch.
+
+---
+
+## 1. Open the Quotations page
+
+Go to **Orders > Quotations** in the sidebar. You'll see all quotes for the current branch.
+
+[Open Quotations](/dashboard/quotations)
+
+The list is filtered to your active branch (the one you have selected in the top bar). Switching branches changes which quotes you see — head office and each store keep their own quote book.
+
+---
+
+## 2. Click "New Quotation"
+
+You'll be asked for:
+
+### Customer
+
+- **Existing customer** — search by name, phone, or email. The quote will link to their record.
+- **Walk-in** — type the name and contact details directly. The quote saves a snapshot, so it works even before you create a full customer record.
+
+The customer details on the quote are a **snapshot**. If you later edit the customer's profile, the quote keeps the original info. This is important for legal traceability — the quote shows what was agreed at the time.
+
+### Channel
+
+How the quote will reach the customer:
+
+- **B2B** — formal business quote (default)
+- **Web** — generated from a web inquiry
+- **Phone** — phone-based negotiation
+- **Walk-in** — counter or showroom
+
+Channel is informational — it doesn't change behavior. Use it for reporting later.
+
+---
+
+## 3. Add line items
+
+For each product:
+
+1. Search by name or SKU
+2. Set the quantity
+3. Either accept the catalog price or override it
+
+### Price overrides
+
+If you're offering a quantity discount or bulk pricing, click on the unit price and type the agreed amount. The line total updates automatically.
+
+The override is **per-line** and only applies to this quote. It does not change the catalog price.
+
+### Sections and notes
+
+For long quotes, you can add:
+
+- **Section headers** — non-priced rows that group lines (e.g., "Phase 1", "Phase 2")
+- **Note rows** — non-priced text, useful for warranty terms or delivery details
+
+---
+
+## 4. Set the validity date
+
+Pick a date by which the customer needs to accept. Common values:
+
+- **7 days** — short, urgent quotes
+- **30 days** — standard B2B
+- **90 days** — long lead-time products
+
+After this date, the quote auto-expires (a background job changes its status). Expired quotes can't be accepted — you'd have to clone the quote into a new draft.
+
+If you don't set a validity date, the quote never expires automatically. You can still expire it manually later.
+
+---
+
+## 5. Notes
+
+Two kinds of notes:
+
+- **Customer-facing notes** — appear on the quote PDF and the customer-facing view (warranty, payment terms, delivery promises)
+- **Internal notes** — staff-only, never sent to the customer (negotiation history, follow-up reminders)
+
+Both are searchable later from the quotations list.
+
+---
+
+## 6. Save as draft
+
+Click **Create**. The quote is saved as a **Draft** with a number like `QUO-2026-0042`.
+
+It's not sent to the customer yet — it's just sitting in your drafts. You can come back, edit it, or send it whenever you're ready.
+
+[Go to Quotations](/dashboard/quotations)
+
+---
+
+## Quick tips
+
+- **Drafts are editable.** Once a quote is sent, lines and prices are locked. Make sure the numbers are right before sending.
+- **Customer email is required to send.** Drafts without an email can be saved but can't be sent until you fill in a contact.
+- **Stock is not reserved.** Building a quote doesn't take stock out of inventory. Stock is only touched when the quote is accepted and converted to an order.
+
+---
+
+## What's next?
+
+- [Send & Track a Quotation](/dashboard/orders/learn/send-track-quotation) — share the quote with the customer
+- [Convert a Quote to an Order](/dashboard/orders/learn/convert-to-order) — what happens after they accept

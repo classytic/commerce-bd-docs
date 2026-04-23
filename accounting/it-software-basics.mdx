@@ -1,0 +1,69 @@
+# IT / software basics
+
+You run an IT, software, or ITES company. NBR gives the sector preferential
+treatment but the rules split between domestic and export revenue.
+
+## The two revenue streams
+
+### 1. Domestic services → 5% VAT (ITES)
+
+- Reduced rate for ITES (IT-Enabled Services) category.
+- Apply tax class `REDUCED_5` on your invoices to domestic BD clients.
+- **You cannot claim input VAT on these** — reduced-rate supplies are
+  truncated, NBR doesn't allow offsetting.
+- Input VAT on your operating costs (office rent, utilities) at standard
+  15% can still be claimed against any STANDARD-rate revenue you have.
+
+### 2. Foreign service exports → 0% VAT (zero-rated)
+
+- Buyer country ≠ BD → system automatically remaps to `ZERO_EXPORT`
+  via the INTERNATIONAL fiscal position.
+- Input VAT on overhead IS claimable (via 1150.VAT0.INPUT → refund).
+- You need proof of supply: foreign client invoice, remittance, proof
+  of IP/service delivery.
+
+## SEZ / BHTC benefits
+
+If you're based in a Special Economic Zone or Bangabandhu Hi-Tech City,
+mark the branch `sezStatus: SEZ` or `BHTC`. SRO-186/2023 gives you:
+
+- 80% VAT rebate on utility bills.
+- Streamlined VAT registration.
+- Additional income-tax exemptions (handled in your IT return, not here).
+
+When a utility supplier invoices your SEZ/BHTC unit, system applies the
+`SEZ_BHTC_UTILITY` fiscal position — rebate is handled as a post-entry
+credit line (not a rate change).
+
+## ITES certificate (Finance Act 2024 / SRO-170/2024)
+
+IT/ITES companies can claim a full VAT/CIT exemption until **June 2027**
+if they hold a valid BCC (Bangladesh Computer Council) certificate.
+
+- Renew yearly — attach to annual filings.
+- Stored in your branch settings (future enhancement).
+- When active, the exemption applies automatically via SRO reference.
+
+## What the system does automatically
+
+- **Domestic ITES invoice**: 5% VAT via REDUCED_5 tax class.
+- **Foreign export invoice**: INTERNATIONAL fiscal position → 0% VAT.
+- **Utility bill to SEZ/BHTC unit**: 80% rebate flagged for post-entry.
+- **Monthly Mushak 9.1**: splits output by rate (5% ITES vs 0% export).
+
+## Common questions
+
+**Are domestic + export invoices filed together?**
+Yes — one Mushak 9.1 per branch per month, with sections for standard,
+reduced, zero-rated, and exempt. The system aggregates per rate for you.
+
+**Call-center services — are those different?**
+Call center services have a separate exemption under older SROs. Mark
+the product as `EXEMPT_GOVT` or use a custom tax class added via
+`extraTaxClasses` in the engine config.
+
+## Related
+
+- [Business types](business-types.md)
+- [VAT basics](vat-basics.md)
+- [Service provider VDS](service-vds-basics.md) — relevant for billing CORP clients

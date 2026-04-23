@@ -1,0 +1,142 @@
+---
+title: CRM Pipelines
+description: Define your sales process — stages, default win probabilities, and which pipelines apply to which deals
+---
+
+# Pipelines
+
+A **pipeline** is the sequence of steps a deal moves through from "interest" to "closed". You can run several pipelines in parallel — one for enterprise, one for retail, one for partnerships, etc.
+
+> Dashboard UI is in development. Pipelines + stages can be configured today via the SDK / REST API.
+
+---
+
+## What's in a Pipeline
+
+| Field | Meaning |
+|-------|---------|
+| **Name** | Display label (e.g. "Standard Sales") |
+| **Stages** | Ordered list — see below |
+| **Default flag** | One pipeline per branch can be marked default; new opportunities use it unless overridden |
+| **Status** | `active` or `archived` (archived hidden from pickers, existing opportunities unaffected) |
+
+### Stage shape
+
+| Field | Meaning |
+|-------|---------|
+| **ID** | Stable identifier (e.g. `stg_qualify`) |
+| **Name** | Display label (e.g. "Qualify") |
+| **Sequence** | Order in the pipeline (1, 2, 3, …) |
+| **Default probability** | 0–100% — used when an opportunity advances to this stage |
+| **Description** | Optional — what this stage represents |
+| **Color** | Optional — for kanban UI |
+
+---
+
+## A Standard Pipeline
+
+A typical four-stage pipeline for B2B sales:
+
+| Sequence | Name | Default % | Meaning |
+|----------|------|-----------|---------|
+| 1 | Qualify | 10 | Prospect has need + authority + budget direction |
+| 2 | Propose | 30 | We've sent a proposal or quote |
+| 3 | Negotiate | 60 | Discussing price, terms, contract |
+| 4 | Close | 90 | Verbal yes, paperwork in flight |
+
+There's no separate "Won" or "Lost" stage — those are status transitions on the opportunity (see [Opportunities](/commerce-bd/docs/crm/opportunities)). The pipeline only models the **open** path.
+
+---
+
+## Multiple Pipelines
+
+Run different pipelines for different sales motions:
+
+| Pipeline | Stages | Use for |
+|----------|--------|---------|
+| **Enterprise** | Discover → Qualify → Demo → Propose → Negotiate → Close | Long-cycle B2B deals |
+| **SMB** | Qualify → Demo → Close | Faster mid-market sales |
+| **Inbound** | New → Qualified → Trial → Convert | Self-service signups |
+| **Partner referral** | Intro → Vetted → Joint sell → Close | Channel deals |
+
+Each opportunity belongs to exactly one pipeline (chosen at lead conversion or opportunity creation). Switching pipelines mid-deal is possible (`PATCH /opportunities/:id { pipelineId, stageId }`) but unusual — it usually means the deal mutated significantly.
+
+---
+
+## Create a Pipeline
+
+```
+POST /api/v1/crm/pipelines {
+  name: 'Enterprise',
+  isDefault: false,
+  stages: [
+    { id: 'stg_discover',  name: 'Discover',  sequence: 1, defaultProbability: 5 },
+    { id: 'stg_qualify',   name: 'Qualify',   sequence: 2, defaultProbability: 15 },
+    { id: 'stg_demo',      name: 'Demo',      sequence: 3, defaultProbability: 30 },
+    { id: 'stg_propose',   name: 'Propose',   sequence: 4, defaultProbability: 50 },
+    { id: 'stg_negotiate', name: 'Negotiate', sequence: 5, defaultProbability: 75 },
+    { id: 'stg_close',     name: 'Close',     sequence: 6, defaultProbability: 90 },
+  ],
+}
+```
+
+Set `isDefault: true` on **one** pipeline per branch — that's the one used when no `pipelineId` is specified.
+
+---
+
+## Edit Stages
+
+```
+PATCH /api/v1/crm/pipelines/:id { stages: [...] }
+```
+
+You're replacing the whole `stages` array — pull the existing list, modify, push back.
+
+When you edit a stage:
+- **Existing opportunities at that stage** are unaffected (they keep their old probability override unless you also update them)
+- **New advances to that stage** pick up the new defaults
+- **Renaming a stage** is just a label change; opportunities stay linked via `stageId`
+
+When you delete a stage that opportunities are sitting in, the system **rejects the change** (would orphan the opportunities). Move them to a different stage first.
+
+---
+
+## Archive a Pipeline
+
+If you stop using a pipeline:
+
+```
+PATCH /api/v1/crm/pipelines/:id { status: 'archived' }
+```
+
+Archived pipelines:
+- Disappear from the "create new opportunity" picker
+- Existing opportunities continue to use them for status display
+- Reports still include them under historical data
+
+Don't delete pipelines that have ever had opportunities — archive instead.
+
+---
+
+## Branch Scoping
+
+Pipelines are **per-branch**. Each branch defines its own pipelines + stages. There's no cross-branch sync — if head office wants the same pipeline at every branch, they create the same definition in each.
+
+If you find yourself maintaining identical pipelines in 10 branches, consider whether the branches are really independent or whether a head-office single-tenant approach would suit better.
+
+---
+
+## Tips for Designing a Pipeline
+
+1. **Fewer stages > more stages.** Salespeople won't use a 15-stage pipeline. Aim for 4–6 stages that map to real customer commitments.
+2. **Each stage should have a clear "exit criterion".** "Discover → Qualify" should mean "got budget confirmation" — not "had a nice chat".
+3. **Default probabilities should reflect reality.** Track win rates by stage for a quarter, then calibrate.
+4. **Avoid "Demo done" as a stage.** Demoing is an activity, not a stage. The stage should describe deal status, not work done.
+5. **Don't add a "Closed Won" stage.** Use the win/lose status transitions instead — they're terminal and trigger downstream events (Customer activation, etc.).
+
+---
+
+## What's next?
+
+- [Opportunities](/commerce-bd/docs/crm/opportunities) — the deals that flow through pipelines
+- [Loss Reasons](/commerce-bd/docs/crm/loss-reasons) — required when a deal exits the pipeline as lost

@@ -1,0 +1,69 @@
+# Branches
+
+Each physical location — store, warehouse, outlet — is a **branch**. Stock, staff, POS shifts, and reports are scoped per branch.
+
+---
+
+## Add a Branch
+
+Go to **Settings > Branches** and click **New Branch**. Fill in:
+
+- **Branch Name** — e.g. "Gulshan Showroom" or "Uttara Warehouse"
+- **Branch Code** — short identifier used on documents (e.g. `GUL-1`)
+- **Branch Type** — store, warehouse, or outlet
+- **Branch Role** — head office, branch, or warehouse
+- **Address** — for shipping labels and tax invoices
+
+Click **Create**. The first branch you create is automatically marked as **default** — it's the one users land in when they log in.
+
+[Manage Branches](/dashboard/branches)
+
+---
+
+## Switch Between Branches
+
+The branch switcher is in the **top bar**, next to your profile. Pick a branch and the entire dashboard refreshes — stock, transfers, sales, everything you see is now scoped to that branch only.
+
+You can only switch into branches you're a member of. To add yourself or someone else to a branch, see [Users & Roles](/dashboard/platform/learn/users-and-roles).
+
+---
+
+## What Each Branch Owns
+
+When you create a branch, the system automatically provisions:
+
+- **1 warehouse node** (the branch's storage area)
+- **4 stock locations** — Stock (main), Vendor (incoming), Customer (outgoing), Adjustment (corrections)
+- **Branch-specific roles** for staff (branch_manager, cashier, inventory_staff, etc.)
+- **Its own POS shifts and registers**
+
+Stock at one branch is **completely isolated** from stock at another. To move goods between branches, use [Transfers](/dashboard/inventory/learn/transfers).
+
+---
+
+## Set a Default Branch
+
+The default branch is the one new users land in when they log in. Go to **Settings > Branches**, click the branch you want, then click **Set as Default**.
+
+You can change the default at any time — it doesn't affect existing user sessions, only future logins.
+
+---
+
+## Deactivate a Branch
+
+If you close a location, don't delete the branch — its history (orders, invoices, stock movements) is part of your accounting record.
+
+Instead, click **Deactivate** on the branch profile. Deactivated branches:
+
+- Disappear from the branch switcher
+- Cannot accept new orders, transfers, or POS sales
+- Remain visible in historical reports
+
+[Manage Branches](/dashboard/branches)
+
+---
+
+## What's next?
+
+- [Users & Roles](/dashboard/platform/learn/users-and-roles) — assign staff to branches
+- [Branch Transfers](/dashboard/inventory/learn/transfers) — move stock between branches

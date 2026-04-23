@@ -1,0 +1,105 @@
+---
+title: Loyalty Redemption
+description: How customers spend their points — reservation, conversion rate, max-redeem cap, and the reserve → confirm → release lifecycle
+---
+
+# Redemption
+
+When a member spends points at checkout, the system runs a small state machine to make sure points and discounts always reconcile — even if the order is abandoned.
+
+---
+
+## The Lifecycle
+
+```
+1. reserve   →   "Hold N points for this cart"     (soft hold; balance untouched)
+2. confirm   →   "Order placed — apply the discount"  (points moved to redeemed)
+3. release   →   "Cart abandoned — release the hold"  (no points consumed)
+```
+
+The reservation has a **TTL** (default 30 minutes). If neither confirm nor release is called, the system auto-releases when the timer expires. This prevents a forgotten cart from locking up the member's balance forever.
+
+---
+
+## Conversion Rate
+
+Set in **Loyalty > Settings**. Default: **10 points = 1 BDT** of discount.
+
+Examples:
+- Member has 500 points → max redeemable value = BDT 50
+- Order is BDT 1000, member redeems all 500 → discount line = `−BDT 50`, total = `BDT 950`
+
+Conversion is fixed per program. To run a temporary boost ("redeem at 5:1 this weekend!"), use a **promotion** — don't change the loyalty conversion rate mid-month.
+
+---
+
+## Max-Redeem Cap
+
+Members can't redeem the entire order value at once — that would zero out cash transactions. The cap is **% of order subtotal** (default: 50%).
+
+Example with 50% cap:
+- Order BDT 1000, member has 8000 points (worth BDT 800)
+- Max redeem = BDT 500 (50% of 1000) → 5000 points used
+- Remaining 3000 points stay on balance
+
+Adjust the cap in **Loyalty > Settings**. Lower = more cash flow protection; higher = more "all points off!" energy.
+
+---
+
+## Reserve & Confirm in the POS
+
+The cashier doesn't touch this manually — the POS handles it:
+
+1. Cashier scans the member's card ID
+2. POS shows current balance + max redeemable for this cart
+3. Cashier (or customer) picks how many points to redeem
+4. POS calls **reserve** — holds the points server-side
+5. Customer pays the remaining cash amount
+6. POS calls **confirm** — points marked as redeemed, transaction logged
+7. Receipt prints with both the discount and the new balance
+
+If the customer changes their mind mid-transaction, the POS calls **release** and the points return to spendable balance.
+
+---
+
+## Refunds
+
+When an order with a redemption is **refunded**:
+
+1. The original `confirm` transaction is reversed
+2. Points are credited back to the member's balance as a `refund` transaction
+3. Tier qualification is re-checked (points refunded count toward tier qualification too)
+
+If only **partial** refund happens, the system refunds points proportionally — refund 50% of the cash, get 50% of the points back.
+
+---
+
+## Manual Redemption (Admin)
+
+For service-recovery flows or in-person concierge service:
+
+1. Open the member's Loyalty tab
+2. Click **Manual Redeem**
+3. Enter points + reason (e.g. "Customer service goodwill — applied to invoice INV-2026-001234")
+4. Save
+
+This skips the reserve step and directly creates a `redeem` transaction. Use the reference field to link it to whatever you're applying it against.
+
+---
+
+## Edge Cases
+
+**Member tries to redeem more than their balance** → POS shows error, no reservation created.
+
+**Reservation TTL expires before confirm** → points auto-return to balance. The order can still complete, just without the discount.
+
+**Member's tier changes mid-checkout** → reservation is unaffected (it's just a points hold, not a discount calculation).
+
+**Currency mismatch** → conversion rate is BDT-denominated. Multi-currency stores need to set the rate per currency or block redemption on non-BDT carts.
+
+---
+
+## What's next?
+
+- [Members](/commerce-bd/docs/loyalty/members) — see redemption history per customer
+- [Tiers](/commerce-bd/docs/loyalty/tiers) — tier discount % is a separate auto-discount that stacks with redemption

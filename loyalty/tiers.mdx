@@ -1,0 +1,104 @@
+---
+title: Loyalty Tiers
+description: Membership levels — Silver, Gold, Platinum — with qualification rules, benefits, and downgrade grace periods
+---
+
+# Tiers
+
+Tiers are the **membership levels** in your loyalty program. Each tier has its own earning multiplier, discount %, and other perks. Members move up automatically when they hit qualification thresholds.
+
+[Open Tiers](/dashboard/loyalty/tiers)
+
+---
+
+## Anatomy of a Tier
+
+| Field | Meaning |
+|-------|---------|
+| **Name** | Display label (e.g. "Silver", "Gold", "Platinum") |
+| **Rank** | Numeric ordering — 1 is the lowest tier |
+| **Min lifetime points** | Optional — qualify by points earned (per evaluation period) |
+| **Min lifetime spend** | Optional — qualify by BDT spent (per evaluation period) |
+| **Earning multiplier** | Applies on top of every earning rule (e.g. 1.5×) |
+| **Discount %** | Auto-discount on every order (e.g. 5%) |
+| **Free shipping** | Toggle — when on, this tier always ships free |
+| **Custom benefits** | Free-form key/value (e.g. `priority_support: true`) |
+| **Downgrade grace** | Days at lower spend before the member drops down (default: 30) |
+
+You can set EITHER min points OR min spend OR both — at least one is required.
+
+---
+
+## Create a Tier
+
+Go to **Loyalty > Tiers** and click **New Tier**. Fill in the fields above and save. The tier appears in the list ordered by rank.
+
+A typical setup:
+
+| Tier | Rank | Min lifetime points (90d) | Earning × | Discount % | Free shipping |
+|------|------|---------------------------|-----------|------------|---------------|
+| Bronze | 1 | 0 | 1.0× | 0% | No |
+| Silver | 2 | 1,000 | 1.2× | 2% | No |
+| Gold | 3 | 5,000 | 1.5× | 5% | Yes |
+| Platinum | 4 | 20,000 | 2.0× | 10% | Yes |
+
+---
+
+## How Qualification Works
+
+Tier evaluation runs **periodically** (typical: every 90 days). The system looks at the member's earned points (or spend) over the **last evaluation period** and finds the highest tier they qualify for.
+
+Three things to know:
+
+1. **Lifetime != all-time.** "Lifetime points" means points earned in the **evaluation window**, not since enrollment. A member who earned 5000 points last year but only 200 this quarter drops to whatever tier 200 qualifies for.
+
+2. **Downgrade is gentle.** When a member's qualification drops below the current tier's threshold, they enter a **grace period** (default 30 days). If they earn enough during the grace period to re-qualify, they stay. Otherwise they drop one tier at the end of grace.
+
+3. **Override beats auto.** An admin tier override (set on the member's profile) bypasses auto-evaluation entirely. Use for VIPs, partner accounts, or correcting bugs.
+
+---
+
+## Re-Evaluate All Members
+
+If you change qualification thresholds (e.g. raise Silver from 500 → 1000 lifetime points), existing members aren't downgraded immediately. Click **Evaluate All** on the Tiers page to recompute everyone's tier with the new rules.
+
+This:
+- Walks every member
+- Computes their qualifying period stats
+- Updates tier assignments
+- Logs each change in the audit ledger
+
+A few minutes for thousands of members; longer for hundreds of thousands. Run during off-peak hours.
+
+---
+
+## Benefits in Action
+
+When a member checks out, the system:
+
+1. Looks up their current tier
+2. Applies the **earning multiplier** to whatever earning rules fire
+3. Applies the **discount %** to the order subtotal
+4. Skips shipping cost if **free shipping** is on
+5. Includes any **custom benefits** flags in the cart payload (your front-end can read these to show "Priority pickup available" etc.)
+
+You don't need to set up matching cart promotions — tier benefits apply automatically based on the customer's loyalty record.
+
+---
+
+## Common Mistakes
+
+| Symptom | Likely cause |
+|---------|--------------|
+| Members keep dropping every quarter | Threshold too high relative to typical purchase rate |
+| Everyone is in the top tier | Threshold too low; raise it and run **Evaluate All** |
+| Promotion launched, nobody got upgraded | Forgot to **Evaluate All** after changing thresholds |
+| VIP customer downgraded by mistake | Use a **Tier Override** with a reason instead of relying on auto |
+
+---
+
+## What's next?
+
+- [Members](/commerce-bd/docs/loyalty/members) — view and override individual members
+- [Redemption](/commerce-bd/docs/loyalty/redemption) — how points become discounts
+- [Earning Rules](/commerce-bd/docs/loyalty/earning-rules) — base point logic that tier multipliers stack on

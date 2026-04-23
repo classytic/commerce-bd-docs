@@ -1,0 +1,76 @@
+---
+title: Customer Roles & Permissions
+description: Who can view, edit, extend credit, and access the A/R ledger
+---
+
+# Roles & Permissions
+
+| Action | Required role |
+|--------|---------------|
+| View customer list + profiles | Any branch member |
+| Create / edit profile, address, tags | `branch_manager`, `admin`, `superadmin` |
+| Enable / change credit terms | `finance-manager`, `finance-admin`, `admin`, `superadmin` |
+| Post opening A/R balance | `finance-admin` only |
+| Receive payment, post debit/credit note | `finance-manager`, `finance-admin` |
+| View A/R ledger statement | `finance-manager` or branch_manager+ |
+| Deactivate customer | `admin`, `superadmin` |
+
+---
+
+## Why credit terms are finance-only
+
+Setting a credit limit is **giving money on faith**. A poorly-set limit (BDT 1,000,000 instead of 100,000) means you can't reject the next big-ticket invoice — and you've already shipped the goods. Restricting credit-term writes to finance roles means:
+
+- Branch managers can sell on credit but can't change the cap
+- Cashiers can record payments but can't issue credit notes
+- Only finance can change exposure limits
+
+If a branch manager needs a credit-limit change, they **request** it from finance with the justification — the request stays in the customer's notes for trace.
+
+---
+
+## Why opening balance is finance-admin
+
+Posting an opening balance creates a journal entry that affects the GL. Get it wrong and trial balance won't reconcile. The system makes it idempotent (safe to retry, no double-post) but it's still a one-shot — restrict to people who understand the posting.
+
+---
+
+## Branch scoping
+
+All customer queries are filtered by the active branch (via `x-organization-id`). Walk-in customers at branch A are **not visible** at branch B. To see all customers across all branches, log in as the head office and switch to the head-office branch.
+
+> **Customer profiles are per-branch.** A wholesale customer who buys from multiple branches has multiple records — one per branch. There's no built-in "global customer" mode. If you want this, set the customer up centrally at head office and apply branch-level tags for routing.
+
+---
+
+## Audit trail
+
+Every credit-related write produces an audit log entry:
+
+- **Credit-terms change** — who / when / before / after values
+- **Payment recording** — who / when / amount / method / reference
+- **Debit/credit note** — who / when / amount / reason / reference
+- **Opening balance** — who / when / amount / idempotency key
+
+Pull the customer's audit log from the **Activity** drawer on the profile (or via `GET /audit?resourceId=:customerId`).
+
+---
+
+## Common Patterns
+
+**"Cashiers should be able to look up customers but not edit"**
+Default — cashiers (cashier role on a branch) get read-only access.
+
+**"Sales reps should manage tags but not credit"**
+Branch_manager role gets tag write but not credit write. This is the default — works out of the box.
+
+**"Read-only access for accountants in non-finance branches"**
+Give accountants the `viewer` branch role + no system role. They see customers and ledgers without write access.
+
+---
+
+## What's next?
+
+- [Profile & Addresses](/commerce-bd/docs/customers/profile-and-addresses) — what each role can change
+- [Credit & A/R Ledger](/commerce-bd/docs/customers/credit-and-ar-ledger) — the full credit workflow
+- [Platform Permissions](/commerce-bd/docs/platform/permissions) — how role assignment works

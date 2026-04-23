@@ -1,0 +1,83 @@
+# Payment Methods
+
+Tell the system which payment methods you accept. The POS and online checkout only show options you've enabled here.
+
+---
+
+## Where to Configure
+
+Go to **Settings > Platform Config** and switch to the **Payment Methods** tab. Click **Add Payment Method** to start.
+
+[Open Platform Config](/dashboard/platform-config)
+
+---
+
+## Cash
+
+Cash on delivery, in-store cash, petty cash drawer.
+
+- **Type**: `cash`
+- **Name**: e.g. "Cash" or "Cash on Delivery"
+- **Active**: on
+
+That's it. No additional fields required.
+
+---
+
+## Mobile Financial Services (bKash, Nagad, Rocket, Upay)
+
+For each MFS account you accept:
+
+- **Type**: `mfs`
+- **Provider**: bkash / nagad / rocket / upay
+- **Name**: e.g. "bKash Personal — Gulshan"
+- **Wallet Number**: the merchant's wallet number (e.g. `01700000000`)
+- **Wallet Name**: registered wallet name
+- **Active**: on
+
+You can add **multiple MFS entries** — e.g. one bKash personal + one Nagad merchant. Each shows up as a separate option at checkout.
+
+> **Validation:** MFS entries require both `provider` and `walletNumber`. The form won't save without them.
+
+---
+
+## Bank Transfer
+
+For each bank account you accept transfers to:
+
+- **Type**: `bank_transfer`
+- **Name**: e.g. "DBBL Current"
+- **Bank Name**: full bank name (e.g. "Dutch Bangla Bank")
+- **Account Number**, **Account Name**, **Branch Name**, **Routing Number**: from your bank statement
+
+The customer sees these details on the invoice so they know where to wire the money.
+
+---
+
+## Card Payments
+
+For card processors (visa, mastercard, amex, etc.):
+
+- **Type**: `card`
+- **Name**: e.g. "City Bank Cards"
+- **Card Types**: pick at least one (visa, mastercard, amex, unionpay, other)
+- **Bank Name**: optional, the acquiring bank
+
+> **Validation:** Card entries require at least one card type — leave the array empty and the form rejects the save.
+
+---
+
+## Reorder, Disable, or Remove
+
+In the Payment Methods table:
+
+- **Drag** rows to reorder — the order here is the order shown to customers
+- Toggle **Active** off to hide a method without deleting it (useful when an account is temporarily out of service)
+- Click **Delete** to remove permanently — only do this for methods that have **never been used** on an invoice
+
+---
+
+## What's next?
+
+- [VAT & BIN Setup](/dashboard/platform/learn/vat-setup) — required for tax invoices
+- [Getting Started](/dashboard/platform/learn/getting-started) — full launch checklist

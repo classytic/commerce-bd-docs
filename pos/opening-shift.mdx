@@ -1,0 +1,113 @@
+---
+title: Opening a Shift
+description: Start a cashier session — count the float, open the register, log into the right branch
+---
+
+# Opening a Shift
+
+Every cashier day starts here. Takes about 30 seconds.
+
+[Open the POS terminal](/pos)
+
+---
+
+## Before You Click "Open"
+
+Three checks:
+
+1. **Right branch** — confirm the branch switcher in the top bar shows the store you're working in. The shift is tied to that branch — opening at the wrong one means your sales count toward the wrong store's report.
+2. **Right cashier login** — confirm you're logged in as yourself (your initials in the top-right). Shifts are tied to the user ID; the Z-report at end-of-day shows your name.
+3. **Drawer reset** — the physical cash drawer should be at zero (no leftover from yesterday). If there's residual cash, count it and either reconcile it now or hand it to the manager.
+
+---
+
+## Step 1 — Count the Float
+
+The **float** is the opening cash that goes into the drawer so you can make change from the very first sale. Most stores standardize this (e.g. always BDT 1,000 in mixed denominations).
+
+A typical float:
+
+| Denomination | Count | Total |
+|--------------|-------|-------|
+| 100 BDT × 5 | 5 | 500 |
+| 50 BDT × 6 | 6 | 300 |
+| 20 BDT × 5 | 5 | 100 |
+| 10 BDT × 5 | 5 | 50 |
+| 5 BDT × 5 | 5 | 25 |
+| 2 BDT × 12 | 12 | 24 |
+| 1 BDT × 1 | 1 | 1 |
+| **Total** | | **1,000** |
+
+Count it twice. Match the manager's expected float for the day. Discrepancies before opening are easier to catch than at close.
+
+---
+
+## Step 2 — Open the Register
+
+1. Click **POS** in the sidebar (or hit `/pos` directly)
+2. The screen lands on **Shift Open** (because no shift is currently active)
+3. Type the float amount you counted (e.g. `1000`)
+4. Click **Open Register**
+
+The system creates a shift record:
+
+- **Status** = `open`
+- **Opening cash** = your float amount
+- **Opened at** = current timestamp
+- **Cashier** = your user
+- **Branch** = active branch
+
+You're immediately taken to the **Products** screen — ready to sell.
+
+---
+
+## What If a Shift Is Already Open?
+
+If you click **POS** and the screen shows the Products screen directly (not Shift Open), there's already an open shift for this branch. Three possibilities:
+
+**You opened it yourself yesterday and didn't close.** Close it now (F10), reconcile yesterday's drawer if possible, then open today's shift.
+
+**Another cashier opened it earlier.** They're using the same branch. Either:
+- Take over their shift (their sales become part of yours — usually wrong)
+- Have them close, then you open fresh
+
+**A previous shift crashed without closing.** You'll see the open shift's start time and cashier in the X-report. Have a manager close it (entering whatever cash IS in the drawer as the closing count) so you can start fresh.
+
+There's no "force-open" — only one shift at a time per branch.
+
+---
+
+## Manager Float Override
+
+If the day's expected float is unusual (extra cash for a sale event, less cash for a weekday morning), a manager can:
+
+1. Enter their own login PIN at the float prompt
+2. Override the standard float to whatever's appropriate
+3. Add a reason in the optional notes field
+
+The override is logged in the shift's audit trail. The closing variance still uses whatever opening cash was actually entered — no shenanigans.
+
+---
+
+## What's Recorded
+
+When you open a shift, the system stores:
+
+- **Cashier** — your user ID
+- **Branch** — the active org
+- **Opening cash** — the float you counted
+- **Opened at** — timestamp
+- **Cash movements** — empty array (any in/out movements during the shift land here)
+- **Sales count + total** — start at 0, increment as you ring up sales
+- **Refund count + total** — start at 0
+- **Status** — `open`
+
+Everything you do during the shift writes to this record.
+
+---
+
+## What's next?
+
+- [Taking Sales](/commerce-bd/docs/pos/taking-sales) — the main cashier workflow
+- [Closing Shift & Reports](/commerce-bd/docs/pos/closing-shift-and-reports) — at end-of-day
+- [Troubleshooting](/commerce-bd/docs/pos/troubleshooting) — when something goes wrong

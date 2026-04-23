@@ -1,0 +1,130 @@
+---
+title: CRM Activities & Notes
+description: Log calls, schedule meetings, capture context — the working memory of your sales team
+---
+
+# Activities & Notes
+
+**Activities** are work items (call, email, meeting, task — with timestamps, participants, status). **Notes** are free-text comments — context that doesn't have a status or due date.
+
+Both attach to leads, contacts, accounts, or opportunities via a polymorphic link: `subjectKind` + `subjectId`.
+
+> Dashboard UI is in development. The pattern below describes the workflow + API.
+
+---
+
+## Activities
+
+### Anatomy
+
+| Field | Meaning |
+|-------|---------|
+| **Type** | `call`, `email`, `meeting`, `task`, `sms`, `demo` |
+| **Subject kind** | `lead`, `contact`, `account`, `opportunity` |
+| **Subject ID** | The record this activity attaches to |
+| **Title** | Short summary (e.g. "Discovery call with CFO") |
+| **Description** | Full notes / agenda / outcomes |
+| **Scheduled at** | Optional — when this activity is/was scheduled |
+| **Completed at** | Set when status moves to `completed` |
+| **Participants** | User IDs of involved teammates |
+| **Owner** | Person responsible (defaults to creator) |
+| **Status** | `planned`, `completed`, `cancelled` |
+
+### Lifecycle
+
+```
+planned → completed   (work was done; record outcome in description)
+       ↘  cancelled   (didn't happen — meeting no-show, customer rescheduled)
+```
+
+| Action | Endpoint |
+|--------|----------|
+| Create | `POST /crm/activities` |
+| Complete | `POST /crm/activities/:id/action { action: 'complete' }` |
+| Cancel | `POST /crm/activities/:id/action { action: 'cancel' }` |
+
+Once `completed` or `cancelled`, the activity is locked — edit the description but not the status.
+
+### Common patterns
+
+**Logging a past call** — create with `type: 'call'`, `status: 'completed'`, `completedAt: now`. No `scheduledAt` needed.
+
+**Scheduling a future meeting** — create with `type: 'meeting'`, `scheduledAt: future-date`, `participants: [me, colleague]`, `status: 'planned'`.
+
+**Sending an email** — create with `type: 'email'`, `description: <email body>`, `status: 'completed'`. Some teams auto-create these via email integration; others log manually.
+
+**Follow-up task** — create with `type: 'task'`, `scheduledAt: future-date`, `title: 'Send proposal'`. Acts as a reminder.
+
+---
+
+## Notes
+
+Notes are simpler — text, timestamp, author, subject link. No status, no due date, no participants.
+
+| Field | Meaning |
+|-------|---------|
+| **Subject kind** | `lead`, `contact`, `account`, `opportunity` |
+| **Subject ID** | The record this note attaches to |
+| **Body** | Text or markdown |
+| **Author** | The user who wrote it (auto-set from JWT) |
+| **Created at** | Timestamp (auto-set) |
+
+### When to use a Note vs. an Activity
+
+| Use a **Note** for | Use an **Activity** for |
+|--------------------|------------------------|
+| "FYI — they prefer email over phone" | A call you need to schedule |
+| "Just heard their CTO is leaving" | A meeting that has participants + a time |
+| "Internal context — they're cost-sensitive" | A task to "send proposal by Friday" |
+| Quick brain-dump after a hallway conversation | Anything you want to mark complete or track to a deadline |
+
+Notes are append-only — you can't edit or delete them after creating (audit-friendly). Activities are mutable until they reach a terminal status.
+
+---
+
+## The Polymorphic Pattern
+
+Activities and notes use `subjectKind` + `subjectId` rather than separate `leadId` / `opportunityId` fields. This means:
+
+```
+GET /crm/activities?subjectKind=opportunity&subjectId=opp_123
+GET /crm/notes?subjectKind=account&subjectId=acc_acme
+```
+
+Same query shape regardless of what record you're viewing. The dashboard UI uses this to render a unified "Activity Timeline" component on every CRM detail page.
+
+If a lead converts into an Account + Contact + Opportunity, the lead's activities **stay attached to the lead** — they don't auto-migrate. The new Opportunity starts with an empty activity list. This is intentional: the conversion is a clean break between funnel stages.
+
+---
+
+## Reminders & Follow-Ups
+
+Activities with `status: planned` and `scheduledAt` in the past are **overdue**. The dashboard surfaces these prominently — "You have 3 overdue follow-ups" — to keep deals from going cold.
+
+Common reminder patterns:
+- **24 hours** after sending a proposal — "Follow up on proposal"
+- **3 days** of no response — "Re-engage with new angle"
+- **2 weeks** of stalled deal — "Manager check-in"
+
+These aren't enforced by the system — they're conventions your team adopts and the activity list helps surface.
+
+---
+
+## Reporting on Activity Volume
+
+Manager queries to evaluate rep productivity:
+
+- **Calls per week per rep** — `?type=call&status=completed&completedAt>=...&ownerId=...`
+- **Meetings booked** — `?type=meeting&status=planned&scheduledAt>=...`
+- **Overdue tasks** — `?type=task&status=planned&scheduledAt<now`
+- **Activities per opportunity** — group by `subjectId` to see which deals are getting attention
+
+The dashboard UI we're building includes a Sales Performance report with these baked in.
+
+---
+
+## What's next?
+
+- [Leads](/commerce-bd/docs/crm/leads) — where most early-stage activities live
+- [Opportunities](/commerce-bd/docs/crm/opportunities) — where deal-stage activities live
+- [Pipelines](/commerce-bd/docs/crm/pipelines) — the structure activities ladder up against

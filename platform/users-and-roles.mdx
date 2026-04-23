@@ -1,0 +1,82 @@
+# Users & Roles
+
+Every staff member needs an account. Roles control what they can see and do.
+
+---
+
+## Add a User
+
+Go to **Settings > Users** and click **New User**. Fill in:
+
+- **Name** + **Email** — the email is their login
+- **Password** — they can change it after first login
+- **Phone** — optional, for password reset
+- **System Role** — see the table below
+
+Click **Create**. The user can log in immediately.
+
+[Manage Users](/dashboard/users)
+
+> **Only superadmin users can create accounts.** If you don't see the **New User** button, ask your owner to promote you.
+
+---
+
+## System Roles
+
+System roles are platform-wide and control access to the whole system, not a single branch.
+
+| Role | Use for |
+|------|---------|
+| `superadmin` | Owner — can do everything, including create other users |
+| `admin` | Manager — can configure platform but cannot create users |
+| `finance-manager` | Read accounting reports, post journal entries |
+| `finance-admin` | Full accounting control including period close |
+| `store-manager` | Manage stock and sales for assigned branches |
+| `store-staff` | POS, basic stock checks |
+| `warehouse-staff` | Pick, pack, receive — scanner-driven tasks |
+| `warehouse-admin` | Full warehouse control: cycle counts, adjustments |
+| `user` | Default — read-only basics |
+
+A user can have **multiple system roles** at once. For example, a finance manager who also runs a store would get `['finance-manager', 'store-manager']`.
+
+---
+
+## Branch Membership
+
+System roles aren't enough — users also need **branch membership** to see anything inside a branch.
+
+On the user's profile, scroll to **Branch Assignments** and:
+
+1. Click **Add Branch**
+2. Pick a branch
+3. Pick a **branch role**: `branch_manager`, `cashier`, `inventory_staff`, `stock_receiver`, `stock_requester`, or `viewer`
+4. Save
+
+The user can now switch into that branch and use the branch-scoped pages.
+
+---
+
+## Update Your Own Profile
+
+Anyone can update their own name and email. Click your avatar in the top-right and pick **My Profile**.
+
+To change your password, use **Settings > Account > Change Password** — handled by the auth system, not the user resource.
+
+---
+
+## Deactivate a User
+
+Don't delete users who have history (POS shifts, journal entries). Instead, edit the user and toggle **Active** off. Deactivated users:
+
+- Cannot log in
+- Stay attached to their historical records
+- Can be reactivated later
+
+[Manage Users](/dashboard/users)
+
+---
+
+## What's next?
+
+- [Roles & Permissions Reference](/dashboard/platform/learn/permissions) — exactly who can do what
+- [Branches](/dashboard/platform/learn/branches) — where users get assigned

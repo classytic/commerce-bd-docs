@@ -1,0 +1,183 @@
+# Returns & RMA
+
+Handle product returns from customers — inspect, restock, and refund. This is the **full-return workflow** with quality inspection and COGS reversal. For quick "just give them their money back" cases where no goods physically come back, see [Order Refunds](/accounting/order-refunds) instead.
+
+---
+
+## Returns vs direct refund — which to use
+
+```
+Goods actually coming back from the customer?
+ ├─ Yes  →  Use this page (RMA). Inspection, per-line disposition, restock,
+ │          COGS reversal.
+ └─ No   →  Use Issue Refund. Quicker, no stock movement.
+              (cancelled order, duplicate charge, failed delivery, etc.)
+```
+
+A settled COD order **must** use this RMA path — direct refund is blocked once the courier has remitted. See [COD Settlement](/accounting/cod-settlement).
+
+---
+
+## How Returns Work
+
+When a customer wants to return items from a delivered order, you create a **return request**. It goes through these stages:
+
+**Draft** > **Approved** > **Shipped** > **Received** > **Inspected** > **Refunded** or **Rejected**
+
+- A return can only be created from a **delivered** order
+- There's a **return window** (default 7 days from delivery)
+- Each item is inspected separately — some may pass, others may fail
+- Approved items go back to stock automatically
+- The system generates a unique return number (e.g., RET-2026-04-0001)
+
+---
+
+## Create a Return
+
+1. Go to **Orders > Returns**
+2. Click **New Return**
+3. Enter the **Order ID** of the delivered order
+4. Add the items being returned:
+   - Select the product
+   - Enter the quantity
+   - Choose a reason: Defective, Wrong item, Damaged, Changed mind, Quality issue, or Other
+5. Choose refund method: **Original payment** or **Store credit**
+6. Click **Create Return**
+
+> The system checks that the order is delivered, the return window hasn't expired, and the quantities don't exceed what was ordered.
+
+[Go to Returns](/dashboard/returns)
+
+---
+
+## Approve a Return
+
+1. Open the return from the list
+2. Click the **Approve** action
+3. The status changes to **Approved**
+
+This tells the customer they can ship the items back.
+
+> Only store managers and branch managers can approve returns.
+
+---
+
+## Customer Ships Items Back
+
+Once approved, update the return when the customer ships:
+
+1. Click **Mark Shipped**
+2. Optionally add the shipping provider and tracking number
+3. The status changes to **Shipped**
+
+---
+
+## Receive at Warehouse
+
+When the returned items arrive at your warehouse:
+
+1. Click **Mark Received**
+2. The status changes to **Received**
+3. Now it's ready for inspection
+
+> Warehouse staff can mark items as received.
+
+---
+
+## Inspect Items
+
+This is where you check the condition of each returned item:
+
+1. Click **Inspect**
+2. For each item, choose:
+   - **Pass** — item is in good condition, will go back to stock
+   - **Partial** — item is usable but not perfect (partial refund)
+   - **Fail** — item is damaged/unusable, will not be restocked
+3. Click **Submit Inspection**
+
+> The refund amount is calculated based on the inspection results.
+
+---
+
+## Process Refund
+
+After inspection, you can issue the refund:
+
+1. Click **Process Refund**
+2. The system automatically:
+   - **Restocks** passed/partial items (they go back to your branch's stock)
+   - **Reverses the COGS** for restocked items: `Dr 1165 Inventory, Cr 5111 COGS` posts for the cost of the returned goods. Keyed by return + line, so re-running is a no-op.
+   - **Issues a refund** to the customer's original payment method (for COD orders already settled, the refund debits bank / credits customer — see [Order Refunds](/accounting/order-refunds) for the per-method journal)
+   - **Updates the order** with a timeline event
+
+The return is now complete.
+
+**What COGS reversal means**: when the goods originally shipped, COGS was debited (expense recognized) and Inventory credited. When they come back, that entry reverses — inventory value goes up again, COGS goes down. If you skip this reversal, your margin reports overstate cost of goods sold for the period.
+
+Failed items (inspection = Fail) are NOT restocked and NOT reversed — they're treated as scrapped goods. If you later decide to salvage them, use **Warehouse → Scrap / Write-off → Recover**.
+
+---
+
+## Reject a Return
+
+If inspection shows the items aren't eligible for return:
+
+1. Click **Reject** (after inspection)
+2. Add a reason for rejection
+3. No refund is issued and no stock is restored
+
+---
+
+## Cancel a Return
+
+You can cancel a return at any stage before it's received:
+
+- **Draft** — can be cancelled
+- **Approved** — can be cancelled
+- **Shipped** — can be cancelled (but coordinate with the customer)
+- **Received or later** — cannot be cancelled (inspect and decide instead)
+
+---
+
+## Return Reasons
+
+When creating a return, you select a reason for each item:
+
+| Reason | When to use |
+|--------|-------------|
+| Defective | Product doesn't work as expected |
+| Wrong item | Customer received the wrong product |
+| Damaged | Product was damaged during delivery |
+| Changed mind | Customer no longer wants the product |
+| Quality issue | Product quality doesn't meet expectations |
+| Other | Any other reason |
+
+---
+
+## Export Returns
+
+To download a CSV of all returns:
+
+1. Go to **Orders > Returns**
+2. Click the **Export** option
+3. A CSV file downloads with all return data
+
+---
+
+## Permissions
+
+| Action | Who can do it |
+|--------|---------------|
+| Create a return | Store staff, store managers |
+| View returns | Store staff, store managers |
+| Approve / Cancel / Refund | Store managers, branch managers |
+| Inspect items | Warehouse staff, warehouse admins |
+
+---
+
+## Tips
+
+- Process returns quickly — customers appreciate fast refunds
+- Use the status filter pills to focus on returns that need your attention (e.g., "received" = ready for inspection)
+- The return number (RET-2026-04-0001) resets monthly — useful for tracking
+- Check the order's timeline to see all return-related events

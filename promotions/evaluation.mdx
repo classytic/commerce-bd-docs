@@ -1,0 +1,96 @@
+# Cart Evaluation Flow
+
+The four-step lifecycle that decides what discount applies and locks it to an order.
+
+---
+
+## The Four Steps
+
+```
+1. preview     →   "what discount WOULD apply?"  (dry run, no changes)
+2. evaluate    →   "lock in this discount"       (creates pending evaluation)
+3. commit      →   "attach to order"             (voucher counted as used)
+4. rollback    →   "undo the evaluation"         (frees the voucher)
+```
+
+The cart and POS handle this automatically. Knowing the flow helps you debug "why didn't my discount apply?" or "why is this voucher stuck as used?".
+
+---
+
+## 1. Preview — Safe to Call Anytime
+
+Calls `POST /promotions/evaluate/preview` with the cart contents. Returns the discount calculation **without touching the database** — no voucher counters move, nothing is reserved.
+
+Used by:
+- The POS subtotal panel (live update as items are added)
+- The web checkout's "show savings" line
+- Customer support tools when investigating discrepancies
+
+Safe to call as many times as you want.
+
+---
+
+## 2. Evaluate — Reserve the Discount
+
+Calls `POST /promotions/evaluate` with the same cart. This creates a **pending evaluation** record and:
+
+- Reserves any voucher usage counters (the code is now "in flight")
+- Returns an `evaluationId` you'll use in step 3 or 4
+
+The evaluation has a short TTL — if you don't commit or roll back, the system auto-releases the reservation after a few minutes so the voucher can be re-used.
+
+**Why reserve?** Two customers in different carts can't both succeed in redeeming the last copy of a single-use voucher. The first to evaluate wins.
+
+---
+
+## 3. Commit — Lock to an Order
+
+Once the order is created, call `POST /promotions/evaluate/:evaluationId/commit` with the order ID. This:
+
+- Marks the voucher as **used** permanently
+- Increments the program's redemption count
+- Records the link from voucher → order for audit and refund handling
+
+The cart and order modules do this automatically as part of the checkout transaction. Manual intervention is rare.
+
+---
+
+## 4. Rollback — Cancel the Evaluation
+
+If the order is abandoned (customer closes the checkout, payment fails, fraud check rejects), call `POST /promotions/evaluate/:evaluationId/rollback`. This:
+
+- Releases the voucher reservation
+- Decrements any usage counters that were incremented in step 2
+- The voucher is immediately reusable
+
+Rolled-back evaluations stay in the audit log but don't count against quotas.
+
+---
+
+## Common Failure Modes
+
+| Symptom | Cause |
+|---------|-------|
+| `valid voucher, no discount applied` | Cart subtotal is below the rule's `minimumAmount` |
+| `code shows "used" but no order` | An evaluation was committed but the order was deleted — rollback would have prevented this |
+| `same code works on web, not POS` | Permission gate — POS user lacks `promotions.evaluation.evaluate` |
+| `discount changes between preview and evaluate` | A second evaluation already consumed the last available voucher between calls |
+
+---
+
+## Inspect Evaluations
+
+For debugging, every evaluation lives in **Promotions > Evaluations**:
+
+- Filter by status: `pending`, `committed`, `rolled_back`
+- See the cart contents, voucher applied, calculated discount, and timestamps
+- Trace the link back to the order (for committed evaluations)
+
+[Open Promotions](/dashboard/promotions)
+
+---
+
+## What's next?
+
+- [Discount Programs](/dashboard/promotions/learn/programs) — tune rules and rewards
+- [Voucher Codes](/dashboard/promotions/learn/vouchers) — when codes get stuck

@@ -1,0 +1,208 @@
+---
+title: Procurement & Replenishment
+description: Purchase orders with 3-way matching, supplier returns, and auto-reorder rules
+---
+
+# Procurement & Replenishment
+
+**Procurement** = making and receiving purchase orders. **Replenishment** = rules that auto-create POs when stock drops. Together they're how stock gets INTO your warehouse.
+
+Both require **Standard mode or higher**.
+
+[Open Procurement](/dashboard/warehouse/procurement) · [Open Replenishment](/dashboard/warehouse/replenishment)
+
+---
+
+## The Procurement Lifecycle
+
+```
+draft  →  approved  →  ordered  →  partial_received  →  received
+                                                  ↘  cancelled
+                                                  ↘  supplier-return (separate move)
+```
+
+| State | What it means |
+|-------|---------------|
+| **draft** | PO created, not yet approved — editable |
+| **approved** | PO confirmed by buyer, awaiting send-to-vendor |
+| **ordered** | PO sent to vendor, awaiting goods |
+| **partial_received** | Some lines received; balance still open |
+| **received** | All lines received; ready for 3-way match + bill posting |
+| **cancelled** | Killed before completion |
+| **supplier-return** | Separate return MoveGroup (warehouse → vendor) for defective / wrong / surplus goods |
+
+---
+
+## Create a Purchase Order
+
+1. **Warehouse > Procurement** → **New Purchase Order**
+2. Fill in:
+   - **Vendor (supplier)** — pick from your suppliers list
+   - **Destination warehouse + location** — where the goods are received
+   - **Lines** — for each: SKU, quantity, unit cost
+   - **Expected delivery date** (optional)
+3. Save as `draft`
+
+Send the PO to the supplier (download as PDF or email). When they confirm, click **Approve** — moves to `approved` status.
+
+---
+
+## Receive Goods
+
+When the truck arrives:
+
+1. Open the PO → **Receive**
+2. For each line, enter:
+   - **Quantity received** (can be less than ordered — partial OK)
+   - **Lot ID** (existing) or **new lot code + expiry + vendor batch** (auto-creates lot)
+   - **Unit cost** (defaults to PO cost; override for price changes)
+3. Confirm
+
+The system:
+- Creates a **receipt move** — goods enter the destination warehouse
+- Adds units to inventory at the location
+- Posts to GL: **DR Inventory**, **CR Goods Received Not Invoiced (GRNI)**
+
+Receipts can be **partial** — receive 80 of 100, the PO sits at `partial_received` until the balance arrives or you `cancel` it.
+
+```http
+POST /api/v1/inventory/procurement/:id/receive
+{ "items": [ { "skuRef": "TSHIRT-RED-M", "quantity": 80, "unitCost": 250 } ] }
+```
+
+---
+
+## 3-Way Match
+
+When the supplier sends their invoice (a few days/weeks later):
+
+1. Open the PO → **Match Invoice**
+2. Enter:
+   - **Invoice number + date**
+   - **Invoice quantity** per line (what they're charging for)
+   - **Invoice unit cost** per line
+3. The system compares:
+
+```
+PO qty       ──┐
+Receipt qty  ──┼──→  if all 3 agree, match approves bill posting
+Invoice qty  ──┘
+```
+
+**All three match** → bill posts: **DR GRNI, CR A/P**. Now the supplier shows up in [their A/P ledger](/commerce-bd/docs/suppliers/ap-ledger) with a payable.
+
+**Mismatch** → flagged for review. Common cases:
+
+- **Invoice > Receipt** — supplier billed more than you got. Dispute the invoice or post a partial bill.
+- **Receipt > Invoice** — they shipped more than they're charging. Lucky you, but document it.
+- **Cost differs** — price changed since the PO. Decide: accept new price (post adjustment) or push back.
+
+---
+
+## Supplier Return
+
+For defective / wrong / surplus goods you're sending back:
+
+1. Open the PO → **Supplier Return**
+2. Pick lines + quantities to return
+3. Add reason (e.g. "wrong color shipped", "defective on arrival")
+4. Confirm
+
+The system:
+- Creates a **return move** — goods leave warehouse → vendor location
+- Decrements stock at the warehouse
+- Generates a **debit note** (you owe less, supplier owes you back) → see [Suppliers > A/P Ledger](/commerce-bd/docs/suppliers/ap-ledger) for the credit handling
+
+Send the goods back, get the supplier to issue a credit note, reconcile.
+
+---
+
+## Replenishment Rules
+
+Manual procurement is reactive. **Replenishment rules** are proactive — auto-trigger POs when stock crosses a threshold.
+
+[Open Replenishment](/dashboard/warehouse/replenishment)
+
+### Anatomy of a Rule
+
+| Field | Meaning |
+|-------|---------|
+| **skuRef** | Variant SKU (or product `_id` for non-variant goods) |
+| **scopeType** + **scopeRef** | `node` or `location` — which warehouse / bin the rule applies to |
+| **triggerType** | `reorder_point` is the only one wired today |
+| **reorderPoint** (ROP) | When stock at the scope drops to this number, fire |
+| **targetLevel** | Order enough to reach this number |
+| **leadTimeDays** | Vendor lead time (informational) |
+| **procurementMode** | `purchase` (default) \| `transfer` \| `manufacture` |
+| **preferredSourceRef** | Vendor `_id` (purchase) \| source warehouse node `_id` (transfer) |
+| **enabled** | Toggle on/off |
+
+Example: SKU `TSHIRT-RED-M`, ROP 20, target 100, mode `purchase`, vendor "ACME Apparel". When stock drops to 20, the rule fires and creates a draft `ProcurementOrder` for 80 units.
+
+### Procurement modes
+
+The mode picks the demand path:
+
+- `purchase` → external `ProcurementOrder` to `preferredSourceRef` (vendor).
+- `transfer` → inter-warehouse `MoveGroup` (REPL-XFER-...) sourced from `preferredSourceRef` (warehouse node). Use for central distribution. No A/P entry — funded internally.
+- `manufacture` → `ManufactureIntent` placeholder. Manufacturing module is WIP.
+
+### Auto-evaluate cron
+
+`handleStockAlert` runs **hourly** per branch (`be-prod/src/cron/index.ts`). Each tick calls `evaluateRules` then `generateDemand`, persisting `ProcurementOrder` / `MoveGroup` documents for triggered rules. Set `job.data.dryRun = true` for an alert-only configuration.
+
+### Manual evaluate
+
+```http
+POST /api/v1/inventory/replenishment/evaluate
+{ "skuRef": "TSHIRT-RED-M", "nodeId": "<node _id>", "dryRun": true }
+```
+
+`dryRun: true` returns triggers + zero `ordersCreated`. `dryRun: false` actually creates the demand documents and returns them under `purchaseOrders` / `transferGroups` / `manufactureIntents`.
+
+---
+
+## ROP / EOQ Math
+
+Reorder Point and Economic Order Quantity are the classic levers:
+
+**ROP** = (average daily demand × lead time in days) + safety stock
+
+If you sell 5 units/day and the supplier takes 7 days, ROP = 35 + safety. Safety stock covers demand spikes during lead time.
+
+**Target level** (or **EOQ**) balances ordering cost vs holding cost:
+
+EOQ = √(2 × annual demand × order cost / holding cost per unit)
+
+Most businesses set Target = ROP + (lead time × demand) + buffer for one full reorder cycle. Don't over-engineer this — track actual stock-outs + holding cost over a quarter, adjust.
+
+---
+
+## Multi-Branch Replenishment
+
+Rules are **per-branch**. Branch A and Branch B can have:
+
+- Different rules for the same SKU (different demand patterns)
+- Different vendors
+- Different lead times (different geography)
+
+For central distribution (head office consistently feeds the branch), set `procurementMode: 'transfer'` with `preferredSourceRef` pointing at the source warehouse node — the rule fires an inter-branch [Transfer](/commerce-bd/docs/inventory/transfers) MoveGroup instead of a vendor PO.
+
+---
+
+## Common Pitfalls
+
+| Symptom | Cause + fix |
+|---------|-------------|
+| Replenishment fires too often | ROP set too high. Track actual lead time + variance, recalibrate. |
+| Stock-outs despite rules | Rules `inactive`, OR target level too close to ROP, OR sales spiked beyond safety stock |
+| 3-way match mismatch on every PO | Supplier consistently bills different qty than ships. Negotiate or accept "qty bill" tolerance. |
+| Receipt creates wrong lot | Selected wrong lot at receive. Cancel the receipt, redo with right lot (preserves audit) |
+
+---
+
+## What's next?
+
+- [Cost & Valuation](/commerce-bd/docs/warehouse-advanced/cost-and-valuation) — what receipt cost actually goes to inventory
+- [Lots & Traceability](/commerce-bd/docs/warehouse-advanced/lots-and-traceability) — assigning lots at receipt
+- [Suppliers — A/P Ledger](/commerce-bd/docs/suppliers/ap-ledger) — paying the bills that procurement creates

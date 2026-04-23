@@ -1,0 +1,103 @@
+# Expiry, Renewal & Cleanup
+
+Quotes don't live forever. Here's how to handle the ones that go stale.
+
+---
+
+## How expiry works
+
+Every quote can have a **validity date** (set when you create or edit the draft).
+
+- Before the validity date: the quote is open. The customer can still accept.
+- On or after the validity date: a background job marks the quote as **Expired** the next time it runs.
+
+**Expired is terminal.** An expired quote can't be accepted. The customer would need a fresh quote.
+
+If you don't set a validity date, the quote never auto-expires. It stays open until you manually expire or reject it.
+
+---
+
+## Manual expire
+
+You can expire a quote at any time, before or after the validity date:
+
+1. Open the quote
+2. Click **Expire** (action menu)
+3. Confirm
+
+The status changes to **Expired** and `expiredAt` is recorded. Use this when:
+
+- You decide not to honor the quote anymore (cost changes, supply issues)
+- The customer has gone silent for too long
+- You want to clean up a stale quote book
+
+---
+
+## Bulk expire (admin)
+
+For cleanup, an admin can expire all quotes whose validity date has passed but are still showing as Sent or Viewed:
+
+1. Go to **Quotations**
+2. Filter to status **Sent** or **Viewed**, sort by **Valid Until** ascending
+3. Pick the ones older than the cutoff and expire each, OR
+4. (Future) Use a **Bulk Expire** action — currently expire one at a time
+
+A nightly cron also auto-expires due quotes, so manual cleanup is mostly for prompt responses (e.g., "this should never have stayed open this long").
+
+---
+
+## When a customer wants a quote that has expired
+
+Don't try to un-expire — that's not allowed. Instead:
+
+### Clone the expired quote
+
+1. Open the expired quote
+2. Click **Clone** (creates a new draft with the same lines)
+3. Refresh prices if the catalog has changed since
+4. Set a new validity date
+5. Send the new quote
+
+The new quote gets a fresh number (e.g., `QUO-2026-0099` instead of `QUO-2026-0042`). The link from new → old is preserved in metadata for the audit trail.
+
+### Negotiate fresh terms
+
+Use the clone as the starting point. Common reasons to clone:
+
+- Customer wants the same items but a longer lead time
+- Customer wants a small modification (different variant, +1 item)
+- The original quote covered the right scope but is just too old
+
+---
+
+## What about rejected quotes?
+
+Rejected quotes work the same way as expired ones:
+
+- They're terminal — can't be accepted
+- You can clone them into a fresh draft if the customer comes back
+
+The difference is intent — **rejected** means "the customer said no", **expired** means "we never heard back". Both are useful signals when reviewing your sales pipeline.
+
+---
+
+## Reporting on stale quotes
+
+The quotations list shows status badges and validity dates. Useful filters:
+
+| What you want | Filter |
+|---|---|
+| Quotes about to expire this week | Status: Sent or Viewed, Valid Until: this week |
+| Quotes the customer ghosted | Status: Sent or Viewed, older than 14 days |
+| Wins | Status: Converted |
+| Lost | Status: Rejected |
+| Stale drafts | Status: Draft, older than 7 days |
+
+Sort by **last updated** to see what's been sitting and needs attention.
+
+---
+
+## What's next?
+
+- [Roles & Permissions](/dashboard/orders/learn/quotation-permissions) — who's allowed to do what
+- [Quotations Overview](/dashboard/orders/learn/quotations-overview) — back to the start

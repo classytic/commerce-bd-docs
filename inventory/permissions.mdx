@@ -1,0 +1,102 @@
+# Roles & Permissions
+
+Who can do what in inventory, warehouse, and returns management.
+
+---
+
+## Role Overview
+
+| Role | What they can do |
+|------|-----------------|
+| **Superadmin** | Everything, including branch configuration |
+| **Admin** | Full stock control, purchases, transfers, warehouse management |
+| **Branch Manager** | Approve transfers, approve returns, manage quality, stock requests |
+| **Store Manager** | View stock, create returns, transfers, stock requests |
+| **Store Staff** | View stock, create stock requests and returns |
+| **Inventory Staff** | Create transfers, adjustments, manage lots/packages, view reports |
+| **Warehouse Admin** | All warehouse features including quality and dispatch |
+| **Warehouse Staff** | Receive goods, inspect returns, execute tasks, scanning |
+| **Cashier** | POS only (no inventory permissions) |
+
+---
+
+## Permission Details
+
+### Stock & Purchases
+
+| Action | Who can do it |
+|--------|--------------|
+| View stock levels | Store staff, store managers, inventory staff, branch managers, admin |
+| Adjust stock | Inventory staff, branch managers, admin |
+| Bulk adjust / import | Admin only |
+| Create purchases | Admin (head office) |
+| Approve purchases | Admin (head office) |
+| View purchases | Inventory staff, branch managers, admin |
+| Receive goods | Warehouse staff, warehouse admin, admin |
+| Pay suppliers | Admin (head office) |
+
+### Transfers
+
+| Action | Who can do it |
+|--------|--------------|
+| Create transfers | Inventory staff, branch managers, admin |
+| Approve transfers | Branch managers, admin |
+| Dispatch transfers | Store staff, store managers, admin |
+| Receive transfers | Warehouse staff, warehouse admin, admin |
+| View transfers | Store staff, store managers, inventory staff, admin |
+| Cancel transfers | Branch managers, admin |
+
+### Stock Requests
+
+| Action | Who can do it |
+|--------|--------------|
+| Create requests | Store staff, store managers, branch managers |
+| View requests | Store staff, store managers, admin |
+| Approve requests | Branch managers, admin |
+| Fulfill requests | Branch managers, admin |
+
+### Returns & RMA
+
+| Action | Who can do it |
+|--------|--------------|
+| Create returns | Store staff, store managers, branch managers |
+| View returns | Store staff, store managers, admin |
+| Approve / cancel / refund | Store managers, branch managers, admin |
+| Inspect returned items | Warehouse staff, warehouse admin, admin |
+
+### Warehouse (Standard+)
+
+| Action | Who can do it |
+|--------|--------------|
+| Manage lots & serials | Inventory staff, admin |
+| Manage packages (pack/unpack) | Inventory staff, admin |
+| Create procurement orders | Inventory staff, admin |
+| Receive procurement | Warehouse staff, admin |
+| Manage replenishment rules | Admin only |
+| View cost & valuation | Inventory staff, admin |
+
+### Enterprise Features
+
+| Action | Who can do it |
+|--------|--------------|
+| Quality inspection — view checks | Warehouse staff, admin |
+| Quality inspection — manage points | Branch managers, warehouse admin, admin |
+| Execute tasks (pick, putaway, scan) | Warehouse staff, warehouse admin, admin |
+| Dispatch management (manifests, docks) | Admin only |
+| Traceability & reports | Inventory staff, admin |
+
+---
+
+## Branch Scoping
+
+All permissions are scoped to the **active branch**. A manager at Branch A cannot see or modify stock at Branch B unless they switch branches.
+
+The only exception is **View All** — users with stock view permission can see stock across all branches from the Availability Matrix.
+
+---
+
+## What's next?
+
+- [Getting Started](/dashboard/inventory/learn/getting-started) — initial setup
+- [Returns & RMA](/dashboard/inventory/learn/returns-rma) — handle customer returns
+- [Daily Stock Management](/dashboard/inventory/learn/daily-stock) — everyday operations

@@ -1,0 +1,135 @@
+---
+title: Supplier A/P Ledger
+description: Pay bills, issue credit notes, watch aged buckets — the accounts payable workflow
+---
+
+# A/P Ledger
+
+The supplier's A/P Ledger tab is your **accounts payable cockpit** for that vendor. It holds every bill they've sent, every payment you've made, and every credit note you've issued — with running balance and aged buckets.
+
+[Open Suppliers](/dashboard/suppliers)
+
+---
+
+## The Layout
+
+Open the supplier → click the **A/P Ledger** tab. Top to bottom:
+
+### Date range filter
+Default: Jan 1 to today. Narrow to a quarter, month, or specific dates for period reporting.
+
+### Balance summary cards
+Four cards: **Opening**, **Closing**, **Open items total**, **Matched total**. Closing minus matched = what's still owed and unpaid.
+
+### Open Bills table
+Every unpaid bill with: bill number, date, due date, amount, days overdue. Two actions per row:
+
+- **Pay Bill** — record a payment from cash or bank
+- **Credit Note** — allowance / return for a previously-billed amount
+
+### Statement table
+Full ledger entries — every JE that touched A/P for this supplier, in order, with running balance.
+
+### Aged Buckets
+Color-coded breakdown:
+- **0–30 days** — current (green)
+- **31–60 days** — chase soon (yellow)
+- **60–90 days** — pay this week (orange)
+- **90+ days** — late payment penalty risk (red)
+
+Use this for cashflow planning: "How much do we need to pay in the next 30 days?" → sum of 0–30 + 31–60 buckets.
+
+---
+
+## Pay a Bill
+
+When you're ready to settle a vendor bill:
+
+1. Open the supplier's A/P Ledger tab
+2. Find the bill in the Open Bills table
+3. Click **Pay Bill**
+4. Enter:
+   - **Amount** — full bill amount or partial (multiple payments OK)
+   - **Source account** — which cash/bank account funds this payment
+   - **Payment date** — defaults to today
+   - **Reference** — your bank's transaction ID, cheque number, etc.
+   - **Notes** (optional)
+5. Save
+
+The system posts a JE: **DR A/P 2111**, **CR Cash/Bank**. The bill marks as **paid** (full) or **partial** (if amount < bill total). The closing balance drops.
+
+### Multi-bill batch payment
+
+If you're sending one bank transfer covering 5 bills:
+
+- Option A: Record 5 separate payments, each with the same reference → simple, all bills marked paid
+- Option B: Use **batch settlement** (if your finance team set it up) — single payment line that allocates to multiple bills
+
+Most teams default to Option A — slower but unambiguous in the audit trail.
+
+---
+
+## Issue a Credit Note (Vendor Owes You)
+
+When the vendor owes you back money — return, allowance, billing error:
+
+1. Open the supplier's A/P Ledger tab
+2. Find the bill the credit relates to → click **Credit Note**
+3. Enter:
+   - **Amount** in BDT
+   - **Reason** (required — appears in audit)
+   - **Reference** (e.g. internal RMA ticket, return tracking number)
+4. Save
+
+The system posts: **DR A/P 2111**, **CR Inventory/Expense Adjustment**. The supplier's payable balance drops by the credit note amount. If you've already paid the bill, this becomes a **refund receivable** — track it via the supplier's notes until they actually refund you.
+
+For full credit-debit-note pattern, see [Credit & Debit Notes](/commerce-bd/docs/accounting/credit-debit-notes).
+
+---
+
+## Reading the Aged Buckets
+
+A typical end-of-month view:
+
+```
+0–30 days:  BDT 850,000   ← current bills, pay on schedule
+31–60 days: BDT 220,000   ← past terms, chase to pay this week
+60–90 days: BDT  45,000   ← significantly late, vendor relationship at risk
+90+ days:   BDT  12,000   ← collections risk for the vendor; pay or contest
+```
+
+Run this view weekly. Goal: **shrink the right tail**. Anything older than 30 days = either a real dispute (resolve it) or process failure (find and fix it).
+
+---
+
+## Reconciliation Tips
+
+When the vendor's statement disagrees with yours:
+
+1. Filter the statement table by date range matching the vendor's
+2. Compare: count of bills, sum of bills, count of payments, sum of payments
+3. The difference = the dispute. Common causes:
+   - Bill they sent but you never received → ask for re-send
+   - Payment you made but they didn't apply → send your bank reference
+   - Credit note you issued but they didn't apply → forward your debit note
+4. Once reconciled, post any missing entries from your side, ask them to post missing ones from theirs
+
+---
+
+## Common Pitfalls
+
+| Symptom | Cause + fix |
+|---------|-------------|
+| "Pay Bill" button missing | The bill is already fully paid OR you lack `finance-manager` role |
+| Statement shows debit where I expect credit | Check the JE direction — debit notes increase A/P (you owe more), credits decrease |
+| Closing balance ≠ open items total | Open items only counts unpaid bills. Closing = opening + all postings (including matched payments). They should differ by the matched total. |
+| Bill from previous fiscal year still appearing | Check date range filter — it defaults to current FY. Stretch the start date back further. |
+
+---
+
+## What's next?
+
+- [Opening Balance](/commerce-bd/docs/suppliers/opening-balance) — for migrating pre-go-live payables
+- [Credit & Debit Notes](/commerce-bd/docs/accounting/credit-debit-notes) — full pattern across both sides
+- [Daily Operations](/commerce-bd/docs/accounting/daily-operations) — paying bills at scale
+- [Customers — A/R Ledger](/commerce-bd/docs/customers/credit-and-ar-ledger) — same workflow on the receivable side

@@ -1,0 +1,143 @@
+# Loyalty at Checkout
+
+How points actually earn and redeem during a sale. Covers storefront checkout, admin order entry, and POS counter sales — the three places money and points meet.
+
+---
+
+## The three events
+
+```
+Cart assembled     →    Redemption applied    →    Order placed    →    Order paid
+                                                       │
+                                                       │ reserve points
+                                                       ▼
+                                             Points held against order
+                                                       │
+                                                       │ confirm (on paid)
+                                                       ▼
+                                             Points deducted + earned
+```
+
+1. **Redeem** (optional) — customer trades points for a cart discount
+2. **Earn** — the order's eligible amount awards new points
+3. **Confirm** — on payment, reserved redemptions deduct for real, earnings credit
+
+---
+
+## Earning preview
+
+Before placing the order, the checkout shows an **estimated points** line based on the cart total. This is a **preview only** — nothing posts until the order is paid. The preview runs the same earning rules as the real event, so what the customer sees is what they get.
+
+Storefront and POS both show this. If the customer is not enrolled, a "Join loyalty to earn X points" CTA replaces the number.
+
+---
+
+## Redemption at checkout
+
+A member can redeem points for a discount before payment. The flow:
+
+1. Customer enters points to redeem (or clicks "use all")
+2. System validates against their **current balance** (not lifetime)
+3. System validates against **tier rules** (some tiers cap per-order redemption)
+4. Cart subtotal drops by the redemption value
+5. Points enter `reserved` state — still counted as the member's, but earmarked
+
+If the customer abandons the cart, reserved points release back to the balance automatically after a timeout. If they complete payment, the reservation confirms and points deduct for real.
+
+**Points can't be redeemed on a cart where**:
+- The customer isn't enrolled
+- Their balance is below the minimum redemption threshold
+- A promo program has `allowLoyaltyStacking: false` on it (program setting)
+
+---
+
+## Earning on order confirmation
+
+When an order moves to `paid` (prepaid) or `delivered` (COD), the system fires `order.completed`. The loyalty bridge listens and awards points based on:
+
+- Order's **eligible amount** (excludes already-discounted lines, if configured)
+- The member's **tier multiplier** (Gold 1.5×, Platinum 2×, etc.)
+- Any matching **earning rules** (category bonuses, day-of-week, campaigns)
+
+Points land as `earned` entries in the ledger. The customer's balance updates, their tier recomputes, and they can see the credit in their loyalty account immediately.
+
+**COD orders earn on delivery**, not at placement. If a COD order is refused or refunded before delivery, no points ever post.
+
+---
+
+## POS counter flow
+
+The POS terminal has a **Loyalty** panel that works identically to the storefront:
+
+1. **Look up member** — scan card or type phone number. The panel shows balance + tier.
+2. **Redeem** (optional) — enter points; discount applies to cart total.
+3. **Preview earn** — estimated points for this sale show below the tender line.
+4. **Tender payment** — cash, card, bKash, etc.
+5. **Confirm** — redemption posts, earning posts, receipt shows new balance.
+
+A cashier can see which items are eligible vs ineligible for earning (e.g., gift cards don't earn). The UI greys out ineligible lines in the points calculation.
+
+**No card? No phone?** The sale completes as a non-loyalty sale. No retroactive credit — members should identify themselves before tender.
+
+---
+
+## Admin-placed orders
+
+When an admin creates an order manually (phone orders, wholesale), the admin form has:
+
+- **Customer picker** — if the selected customer is a loyalty member, the panel enables
+- **Redeem points** toggle — admin can apply a redemption on behalf of the customer
+- **Earn on completion** — enabled by default; disable for "no-points" promo orders
+
+The admin has more power here than the customer themselves:
+- Can redeem past the customer's normal per-order cap (audit log flags this)
+- Can mark specific lines as "no earn" even if the default rule allows it
+- Can apply a tier-override for one order (e.g. honor "should have been Gold")
+
+See [Adjustments & Ledger](/loyalty/adjustments-and-ledger) for the manual-credit admin path.
+
+---
+
+## Failure modes
+
+| Situation | What happens |
+|---|---|
+| Customer redeems, then cancels cart | Reservation releases after timeout (default: 30 min) |
+| Order paid but fails fulfillment | Earning reverses via `order.cancelled` event |
+| COD order returned via RMA | Earning reverses on the refunded portion (pro-rata) |
+| Admin deletes an order (rare) | Both redemption and earn reverse; balance recomputes |
+| Double-click on "Redeem" | Idempotent — single reservation per cart |
+
+---
+
+## What the customer sees
+
+Their loyalty account page shows:
+
+- **Current balance** — spendable right now
+- **Lifetime earned** — drives tier qualification
+- **Pending** — recently earned, awaiting ledger confirmation (usually seconds)
+- **Reserved** — points earmarked for a cart in progress
+- **Recent activity** — last N transactions with reason + date
+
+The **reserved** state is visible because customers get confused when they redeem but their balance doesn't drop immediately. Showing it explicitly prevents "double spend" questions.
+
+---
+
+## Permissions
+
+| Action | Who |
+|---|---|
+| Customer redeems own points | The customer, or admin on their behalf |
+| Admin redeems past per-order cap | `admin`, `branch_manager` (audit-logged) |
+| Cashier redeems for walk-in | `cashier`, `store-staff` |
+| Admin disables earn on a specific order | `admin` only |
+
+---
+
+## Related
+
+- [Earning Rules](/loyalty/earning-rules) — the rules that decide point amounts
+- [Redemption](/loyalty/redemption) — the redemption rules and thresholds
+- [Adjustments & Ledger](/loyalty/adjustments-and-ledger) — manual admin overrides
+- [POS Delivery Orders](/pos/delivery-orders) — POS flow for shipped orders (same loyalty hooks)

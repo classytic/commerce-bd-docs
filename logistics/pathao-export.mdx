@@ -1,0 +1,132 @@
+# Pathao CSV Export
+
+Batch-export shippable orders as a Pathao-compatible CSV, then upload to the Pathao merchant portal for bulk booking.
+
+---
+
+## When to use this
+
+Use the CSV export when you have many orders ready to ship at once — say, the morning batch of overnight orders. For one-off orders, manual booking on Pathao's portal is fine.
+
+The export includes every order whose fulfillment is in `pending` status (created, not yet dispatched) and has a Pathao-compatible shipping address.
+
+---
+
+## How to export
+
+1. Go to **Shipping → Pathao Export**
+2. Filter as needed:
+   - Date range (defaults to today)
+   - Branch (defaults to active branch)
+   - Payment status (prepaid / COD / all)
+3. Review the preview table — ensure every row has a zone and area
+4. Click **Download CSV**
+5. Log into Pathao Merchant, go to **Bulk Upload**, and upload the file
+
+Pathao returns a booking confirmation file. Upload that back into the system (**Shipping → Pathao Import**) to attach tracking IDs to each fulfillment.
+
+---
+
+## What's in the CSV
+
+Each row is one order. Columns match Pathao's bulk-upload format:
+
+| Column | Source |
+|---|---|
+| Merchant Order ID | Order number |
+| Recipient Name | `shippingAddress.name` |
+| Recipient Phone | `shippingAddress.phone` |
+| Recipient Address | `line1` + `line2` (space-joined) |
+| Recipient City | Pathao cityId (from `providerRefs.pathao.cityId`) |
+| Recipient Zone | Pathao zoneId |
+| Recipient Area | Pathao areaId |
+| Delivery Type | 48 (normal) or 12 (on-demand) — defaults to 48 |
+| Item Type | 2 (parcel) |
+| Special Instruction | `order.metadata.notes` or `order.notes` |
+| Item Quantity | Sum of `lines[].quantity` |
+| Item Weight | Sum of `lines[].snapshot.weightGrams`, converted to kg |
+| Amount to Collect | COD amount (0 for prepaid) |
+| Item Description | Top-3 line names joined |
+
+---
+
+## Routing IDs — the key prerequisite
+
+The exporter reads Pathao IDs from `providerRefs.pathao.{cityId, zoneId, areaId}`. If those are missing, it falls back to matching by city name — **less reliable**, frequent rejections.
+
+Orders missing routing IDs show a **warning pill** in the preview:
+
+```
+⚠ Missing routing IDs: 12 orders
+  These orders will rely on name matching; some may fail to upload.
+  Edit the shipping address to re-pick the area.
+```
+
+Options:
+- **Fix in place**: edit each order's shipping address, re-pick the area so routing IDs refresh
+- **Exclude from batch**: toggle "Only orders with routing IDs" and ship those separately
+
+See [Addresses & Routing](/logistics/addresses-and-routing) for why this matters.
+
+---
+
+## Weight handling
+
+Pathao charges by weight tier. The exporter sums `weightGrams` from each line's snapshot and converts to kilograms:
+
+- 0 to 500g → Mini
+- 501g to 1000g → Standard
+- \> 1000g → Large
+
+If a line's snapshot is missing `weightGrams` (legacy products), weight is reported as 0 and Pathao defaults to Standard. Fix by updating the product's weight field.
+
+---
+
+## COD amount
+
+For COD orders, the exporter writes the order's gross total (product + VAT + delivery — the amount the customer owes at the door).
+
+For prepaid orders, the COD column is `0`. Pathao still processes these — they just don't collect cash.
+
+**Warning**: if the COD amount doesn't match what Pathao actually collects, the COD settlement reconciliation won't net to zero. Review Pathao's daily remittance statement against A/R aging.
+
+---
+
+## After upload — attaching tracking IDs
+
+When Pathao returns the booking confirmation CSV:
+
+1. **Shipping → Pathao Import**
+2. Upload the confirmation file
+3. System matches on Merchant Order ID and attaches `trackingNumber` to each fulfillment
+4. Fulfillment state → `shipped`
+
+From this point, customer-facing tracking links work, and the next stage is delivery confirmation (manual admin action or webhook from Pathao).
+
+---
+
+## Troubleshooting
+
+| Problem | Cause | Fix |
+|---|---|---|
+| Row rejected: "Invalid zone" | `zoneId` missing or stale | Re-edit address, re-pick area |
+| Row rejected: "Phone format" | Non-numeric chars in phone | Normalize in the order before export |
+| Weight shown as 0.0 in Pathao | Product snapshot had no `weightGrams` | Update product → re-snapshot on next order (existing orders stay stale) |
+| Duplicate order error | Merchant Order ID already booked | Don't re-upload the same batch; use Pathao Import to attach the tracking ID from the first upload |
+| COD amount wrong | Order updated after fulfillment created | Regenerate the fulfillment from the order |
+
+---
+
+## Permissions
+
+| Role | Can export |
+|---|---|
+| `admin`, `branch_manager`, `warehouse-admin` | Yes |
+| `warehouse-staff`, `store-staff` | No — view only |
+
+---
+
+## Related
+
+- [Addresses & Routing](/logistics/addresses-and-routing) — why routing IDs matter
+- [COD Settlement](/accounting/cod-settlement) — what happens to COD amounts after delivery

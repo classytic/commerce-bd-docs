@@ -1,0 +1,193 @@
+---
+title: Lots & Traceability
+description: Track batches, expiry, serials — and trace stock forward (where did it go?) or backward (where did it come from?)
+---
+
+# Lots & Traceability
+
+For products where **which batch matters** — perishables, regulated goods, manufacturing inputs — you need lot tracking. Once on, every move records the lot, and you can run forward (recall) or backward (provenance) traces.
+
+[Open Lots](/dashboard/warehouse/lots)
+
+---
+
+## When You Need This
+
+| Industry | Why |
+|----------|-----|
+| **Food & beverage** | Expiry dates → FEFO picking + recall capability |
+| **Pharmaceuticals** | NBR + WHO compliance — every batch traceable |
+| **Cosmetics** | Manufacturing date + batch for quality control |
+| **Electronics** | Serial numbers per unit for warranty + theft tracking |
+| **Manufacturing** | Raw material lots → finished good batches (full chain of custody) |
+
+If your products don't fall into these, lot tracking is overhead you don't need — stick with quantity-only stock.
+
+---
+
+## Two Tracking Modes
+
+| Mode | What it tracks | Use for |
+|------|----------------|---------|
+| **`lot`** | Batch identifier (e.g. `LOT-2026-0142`) — many units share the lot | Food, cosmetics, drug batches |
+| **`serial`** | One identifier per individual unit (e.g. `SN-A19F4-001`) | Phones, laptops, high-value electronics |
+
+Set per product variant when you create the lot. Most products are lot-tracked; serials only for very high-value or warranty-critical items.
+
+---
+
+## Anatomy of a Lot
+
+| Field | Meaning |
+|-------|---------|
+| **SKU ref** | Which variant this lot belongs to |
+| **Lot code** | Unique identifier (e.g. `LOT-2026-0142`) |
+| **Tracking type** | `lot` or `serial` |
+| **Expires at** | Optional — for perishables. Drives FEFO picking. |
+| **Vendor batch ref** | Supplier's own batch ID (for cross-reference) |
+| **Manufactured at** | Manufacturing date |
+| **Status** | `active`, `recalled`, `expired` |
+| **Quantity** | Currently in stock at all locations (auto-maintained) |
+
+---
+
+## Add a Lot Manually
+
+1. **Warehouse > Lots** → **New Lot**
+2. Pick the SKU and lot code
+3. Set tracking type, expiry (if applicable), vendor batch, manufactured date
+4. Save (status = `active`)
+
+The lot exists but has zero stock until inventory is received against it.
+
+> **Most lots are auto-created on receipt** — when you receive a [procurement order](/commerce-bd/docs/warehouse-advanced/procurement-and-replenishment) and assign a lot to the receipt lines, the lot is created automatically. Manual creation is rare.
+
+---
+
+## Receiving with Lots
+
+When goods arrive from a supplier:
+
+1. Open the **Procurement Order** for the receipt
+2. For each line, fill in:
+   - **Quantity received**
+   - **Lot ID** (existing) or **New lot code + expiry + vendor batch** (auto-creates)
+3. Confirm receipt
+
+The system records the lot per location quantity. From this point on, every sale, transfer, or adjustment of this stock references the lot.
+
+---
+
+## FEFO Picking (First-Expire, First-Out)
+
+For lot-tracked SKUs with expiry dates, the system picks **the earliest-expiring lot first** when fulfilling orders. This minimizes write-offs from expired stock.
+
+Example:
+
+```
+SKU: yogurt-500ml
+Branch A stock:
+  Lot YOG-A:  expires 2026-05-01,  quantity 50
+  Lot YOG-B:  expires 2026-05-15,  quantity 100
+  Lot YOG-C:  expires 2026-06-01,  quantity 200
+
+Customer orders 60 units → system picks 50 from YOG-A + 10 from YOG-B
+                          (NOT 60 from YOG-C even though that's the largest lot)
+```
+
+You don't configure FEFO per-product — it's automatic when:
+- The product is lot-tracked
+- The lots have `expiresAt` set
+- The allocation policy is FEFO (typically default for perishables)
+
+For non-perishables, you might use FIFO (earliest-received first) instead — see [Cost & Valuation](/commerce-bd/docs/warehouse-advanced/cost-and-valuation).
+
+---
+
+## Mark a Lot as Recalled (Enterprise)
+
+When a quality issue surfaces and you need to remove a batch from circulation:
+
+1. Open the lot → **Mark Recalled**
+2. Add reason + reference (regulator notice, internal QC report, etc.)
+3. Confirm
+
+The system:
+- Sets `status: recalled`
+- Blocks future sales from this lot
+- Generates a **trace forward report** — every place this lot's stock currently lives + every order that included it (so you can reach affected customers)
+
+The recall is event-driven (`lot:recalled`) — wire to notifications to alert all branches simultaneously.
+
+---
+
+## Forward Trace (Recall) — Enterprise
+
+For an active or recalled lot, you can pull a **forward trace**:
+
+```
+GET /trace/recall {
+  lotCode: 'LOT-2026-0142',
+  skuRef: 'YOGURT-500'
+}
+```
+
+Returns:
+
+- **Current locations** with quantity at each (where the lot is right now)
+- **Past shipments** — every customer order that included this lot
+- **Past transfers** — every branch transfer the lot moved through
+- **Manufacturing batches** (if lot is a finished good built from raw lots) — descendant lots
+
+Use for: recall execution, regulatory reporting, customer outreach.
+
+---
+
+## Backward Trace (Provenance) — Enterprise
+
+For any lot, you can trace its **origin**:
+
+```
+GET /trace/lot?lotCode=LOT-2026-0142&skuRef=YOGURT-500
+```
+
+Returns:
+
+- **Source supplier** — who you bought it from
+- **Receipt date** — when it arrived
+- **Original quantity** — vs current
+- **Movement history** — every warehouse → location → location move
+- **Parent lots** (if it's a finished good) — the raw materials it was built from
+
+Use for: investigating quality issues, audit trails, supplier conversations.
+
+---
+
+## Multi-Branch Lot Behavior
+
+Lots are scoped per organization (branch):
+
+- Lot `YOG-A` at Branch A's stock is **distinct** from a same-named lot at Branch B
+- Recalling `YOG-A` at Branch A does NOT auto-recall it at Branch B
+- Inter-branch transfers carry the lot — receiving branch sees the same lot code with provenance trace
+
+For an enterprise-wide recall (all branches), apply the recall in each branch's lot record. Or use the API to do it in bulk.
+
+---
+
+## Common Pitfalls
+
+| Symptom | Cause + fix |
+|---------|-------------|
+| Stock available shows zero, but the SKU has lots | All lots are expired or recalled. Filter by `status=active` to see usable lots. |
+| Trace returns empty | Wrong lot code (case-sensitive) or lot was recently created and hasn't moved yet |
+| Customer received expired product | FEFO didn't apply — check the allocation policy on the SKU/category. May be set to FIFO. |
+| Bulk recall takes forever | Use the API in a loop with `Promise.all` — single recalls are fast, sequential UI clicks aren't |
+
+---
+
+## What's next?
+
+- [Cycle Counting & Audit](/commerce-bd/docs/warehouse-advanced/cycle-counting) — count lots + serials with provenance
+- [Cost & Valuation](/commerce-bd/docs/warehouse-advanced/cost-and-valuation) — FEFO vs FIFO vs WAC
+- [Procurement & Replenishment](/commerce-bd/docs/warehouse-advanced/procurement-and-replenishment) — where most lots are created

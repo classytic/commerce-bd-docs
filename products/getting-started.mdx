@@ -1,0 +1,155 @@
+---
+title: Products — Getting Started
+description: Catalog setup — products, monetization types, identifiers, shipping fields, status lifecycle
+---
+
+# Getting Started
+
+Products are the **catalog spine** of your store. Each product carries its name, description, pricing, identifiers (SKU, barcode), variants (size/color/etc.), shipping dimensions, and lives company-wide (shared across all branches).
+
+[Open Products](/dashboard/products)
+
+---
+
+## Company-Wide Catalog, Per-Branch Stock
+
+A critical concept:
+
+| | Where it lives |
+|---|----------------|
+| **Product definition** (name, description, price, variants) | Company-wide — same across all branches |
+| **Stock quantity** | Per-branch — each store has its own |
+
+So you create a "Red T-Shirt — Medium" once. Every branch sees it in the catalog. But Branch A might have 50 in stock while Branch B has 5 — same product, different stock.
+
+This means:
+- Edit a product once, change reflects everywhere
+- Stock-out at one branch doesn't hide the product elsewhere
+- Reports can roll up sales across branches without product-ID drift
+
+---
+
+## Add Your First Product
+
+1. **Products** → **New Product**
+2. Fill the **Basic** tab:
+   - **Name** — e.g. "Cotton Crew T-Shirt"
+   - **Slug** — auto-generated from name; permanent once created (this is the URL)
+   - **Description** — supports rich text
+   - **SKU** — unique identifier (system-generated if blank)
+   - **Status** — `draft` (not live) or `active` (live on storefront/POS)
+3. Pick a **monetization type** in the Pricing tab (see below)
+4. Click **Create**
+
+The product is in `draft` status by default — set to `active` when ready to sell.
+
+---
+
+## Four Monetization Types
+
+| Type | Use for | Key fields |
+|------|---------|------------|
+| **`free`** | Free downloads, gifts, samples | None — just pricing.basePrice = 0 |
+| **`one_time`** | Standard purchase (most products) | basePrice, optional compareAtPrice (strike-through), tiers (bulk pricing) |
+| **`subscription`** | Memberships, services, recurring | plans array (key, label, price, duration, durationUnit, trialDays) |
+| **`bundle`** | Grouped products with combo pricing | basePrice + pricingMode (`fixed` static total, `dynamic` component-summed) |
+
+Most physical retail uses `one_time`. Online services + memberships use `subscription`. Multi-product packs use `bundle`.
+
+---
+
+## Status Lifecycle
+
+```
+draft   →   active   →   archived
+                ↑           ↓
+                ←───────────
+```
+
+| Status | Meaning |
+|--------|---------|
+| **draft** | Not visible to customers. Use for products you're still setting up. |
+| **active** | Live on storefront, POS, and listed in search. |
+| **archived** | Soft-deleted. Hidden from new sales but historical orders still link. Recoverable. |
+
+Hard-delete (permanent removal) is admin-only and rarely used — it cascades media cleanup. Archive is the safe default.
+
+---
+
+## Identifiers — SKU, Barcode, etc.
+
+The Identifiers section holds every external ID:
+
+| Field | Use for |
+|-------|---------|
+| **SKU** | Internal stock keeping unit — used by inventory, POS lookup, reports |
+| **Barcode** | Scanned at POS. Can be any format (EAN, UPC, Code128) |
+| **ISBN** | Books |
+| **EAN** | European Article Number |
+| **UPC** | North American UPC |
+| **MPN** | Manufacturer Part Number |
+| **GTIN** | Global Trade Item Number |
+| **Custom** | Free-form key/value pairs (your own internal codes) |
+
+You don't need to fill every field — just the ones relevant to your business. SKU is the most important; barcode if you scan.
+
+For **products with variants**, the SKU lives on the **variant**, not the product. See [Variants & SKUs](/commerce-bd/docs/products/variants-and-skus).
+
+---
+
+## Shipping Fields
+
+For physical products, the Shipping tab holds:
+
+- **Requires shipping** — toggle off for digital/services
+- **Weight** in grams
+- **Dimensions** in cm — length × width × height
+
+These drive:
+- Carrier rate calculations (Redx, Pathao APIs use weight + dimensions)
+- Cart shipping cost estimates
+- Pick/pack workflows in the warehouse
+
+If you sell mainly small items, set sensible defaults at the category level and override per-product only when needed.
+
+---
+
+## Pricing — Quick Tour
+
+The Pricing tab varies by monetization type. For `one_time`:
+
+- **Base price** — what the customer pays
+- **Compare-at price** (optional) — original/MSRP, shown as strike-through to convey discount
+- **Cost price** — your wholesale cost (used for COGS reporting; only visible to finance roles)
+- **Tiers** (optional) — bulk pricing rules:
+
+```
+1–9 units:    BDT 500 each (basePrice)
+10–49 units:  BDT 450 each (10% off)
+50+ units:    BDT 400 each (20% off)
+```
+
+Tiers apply to the **product**, not individual variants — all variants share the same tier structure.
+
+---
+
+## Common First Tasks
+
+| Task | Where |
+|------|-------|
+| Create a simple product | **Products > New Product** — name, basic price, status active |
+| Add variants (size/color) | Product detail → **Variants** tab → see [Variants & SKUs](/commerce-bd/docs/products/variants-and-skus) |
+| Assign to category | Product detail → **Basic** tab → pick category from picker |
+| Upload images | **Media** tab → drag-drop, system auto-generates thumbnail + medium sizes |
+| Bulk import via CSV | API-driven; talk to your platform admin for the import script |
+| Sync stock totals after WMS adjustment | Product detail → **Sync Stock** button (admin only) — recalculates from inventory |
+| Archive a product | Actions menu → **Archive** (soft delete, recoverable) |
+
+---
+
+## What's next?
+
+- [Variants & SKUs](/commerce-bd/docs/products/variants-and-skus) — size/color/etc. with per-variant SKU and pricing
+- [Categories](/commerce-bd/docs/products/categories) — taxonomy, hierarchy, VAT overrides
+- [Size Guides](/commerce-bd/docs/products/size-guides) — measurement charts attached to products
+- [Reviews](/commerce-bd/docs/products/reviews) — moderation flow and stats

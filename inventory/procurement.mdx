@@ -1,0 +1,119 @@
+# Procurement
+
+The vendor-commitment layer. A `ProcurementOrder` represents "we've committed to buy N units from supplier X at price Y." Once the goods arrive, an Accounting `VendorBill` is posted. Two ways to create one:
+
+- **Auto** — a `ReplenishmentRule` fires from the cron and generates a draft PO
+- **Manual** — you click **New Procurement Order** on the Procurement page
+
+> Distinct from a manual [Purchase](/dashboard/inventory/learn/purchases-receiving). The Purchase doc is for ad-hoc supplier orders; ProcurementOrder is the vendor-commitment layer that feeds both replenishment and manual ordering. Both flows post a Vendor Bill once received. Requires `FLOW_MODE >= standard`.
+
+---
+
+## The three-document chain
+
+```
+ReplenishmentRule fires (cron, hourly)
+            |
+            v
+   ProcurementOrder            <-- demand layer (@classytic/flow)
+   draft -> approved -> ordered
+        -> partial_received -> received
+            |
+            v
+   Goods Receipt (MoveGroup)   <-- physical stock intake
+            |
+            v
+   Accounting VendorBill       <-- financial layer (A/P)
+```
+
+| Doc | Where it lives | Role |
+|---|---|---|
+| **ProcurementOrder** | `flow_procurement_orders` | abstract demand → vendor PO |
+| **Goods Receipt** | `flow_move_groups` (`groupType: 'receipt'`) | physical stock intake; carries `metadata.purchaseId` |
+| **VendorBill** | accounting journal entries | A/P with `sourceModel: 'PurchaseOrder'`, `sourceId` |
+
+Replenishment-fired ProcurementOrders and manually-entered Purchase docs both flow into the same VendorBill resource — that's why the [A/P Ledger](/commerce-bd/docs/suppliers/ap-ledger) shows entries from either origin.
+
+---
+
+## Procurement modes
+
+The `procurementMode` field on a `ReplenishmentRule` decides what happens when the trigger fires:
+
+| Mode | Output | Use when |
+|---|---|---|
+| `purchase` (default) | `ProcurementOrder` to a vendor | external supplier replenishes the SKU |
+| `transfer` | inter-branch `MoveGroup` (REPL-XFER-...) | central distribution (head office → branch) |
+| `manufacture` | `ManufactureIntent` (placeholder) | manufacturing module — WIP |
+
+Set in the rule form. `preferredSourceRef` then means **vendor** (purchase mode) or **source warehouse node `_id`** (transfer mode).
+
+---
+
+## Auto-procurement cron
+
+`handleStockAlert` runs **hourly** per bootstrapped branch (`be-prod/src/cron/index.ts`). For each branch it calls:
+
+```ts
+flow.services.replenishment.evaluateRules({}, ctx)
+flow.services.replenishment.generateDemand(evaluation, ctx)
+```
+
+`generateDemand` handles per-rule scope fanout — no extra branch loop needed. ProcurementOrders for `purchase` rules and inter-warehouse MoveGroups for `transfer` rules are persisted as a side-effect.
+
+`job.data.dryRun = true` makes the cron alert-only (no documents created) — useful for quiet environments.
+
+### Manual evaluate
+
+For ad-hoc runs, hit the endpoint directly:
+
+```http
+POST /api/v1/inventory/replenishment/evaluate
+{ "skuRef": "TSHIRT-RED-M", "nodeId": "<warehouse node _id>", "dryRun": true }
+```
+
+`dryRun: true` returns triggers + zero `ordersCreated`. `dryRun: false` calls `generateDemand` and returns the created `purchaseOrders` / `transferGroups` / `manufactureIntents`.
+
+---
+
+## Creating a PO manually
+
+Open **Warehouse → Procurement** and click **New Procurement Order**. The sheet asks for:
+
+| Field | Notes |
+|---|---|
+| **Vendor Reference** | Free text — supplier code, name, or both. Shows on the printed PO. |
+| **Destination** | Auto-filled with the active branch's default warehouse. You don't pick this. |
+| **Items** (array) | SKU + quantity + unit cost per line. At least one required. |
+| **Notes** | Optional — payment terms, delivery schedule, etc. |
+
+On submit, the PO is created in `draft` status. Approve it when the supplier confirms, then mark it received when the goods arrive.
+
+**Unknown SKUs**: the system accepts any `skuRef` string. If it doesn't match an existing catalog product, the PO is created but the SKU will show as "unknown" on receipt and won't auto-link to a product record. Fix by registering the product first, then retrying.
+
+**No default warehouse?** If the branch doesn't have a bootstrapped warehouse yet, the create call fails with `400 NO_DEFAULT_WAREHOUSE`. Visit **Warehouse → Warehouses** and create one.
+
+---
+
+## ProcurementOrder routes
+
+```http
+POST   /api/v1/inventory/procurement                  # create (manual)
+POST   /api/v1/inventory/procurement/:id/action       # approve | cancel
+POST   /api/v1/inventory/procurement/:id/receive      # full / partial
+POST   /api/v1/inventory/procurement/:id/supplier-return
+GET    /api/v1/inventory/procurement/:id/match-status # 3-way match
+POST   /api/v1/inventory/procurement/:id/report-invoiced
+POST   /api/v1/inventory/procurement/:id/validate-match
+GET    /api/v1/inventory/procurement/:id/receipt-moves
+```
+
+For 3-way match details (PO ↔ receipt ↔ vendor bill), see [Procurement & Replenishment (Advanced)](/commerce-bd/docs/warehouse-advanced/procurement-and-replenishment).
+
+---
+
+## What's next?
+
+- [Procurement & Replenishment (Advanced)](/commerce-bd/docs/warehouse-advanced/procurement-and-replenishment) — rule anatomy, ROP / EOQ math, 3-way match
+- [Purchases & Receiving](/dashboard/inventory/learn/purchases-receiving) — manual supplier flow
+- [A/P Ledger](/commerce-bd/docs/suppliers/ap-ledger) — paying the resulting Vendor Bills

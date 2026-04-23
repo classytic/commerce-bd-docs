@@ -1,0 +1,226 @@
+---
+title: Closing Shift & Reports
+description: End-of-day cash count, variance reconciliation, the Z-report, and where the data goes
+---
+
+# Closing Shift & Reports
+
+Closing the shift is a 2-minute process that produces the **Z-report** — your end-of-day record of sales, cash, and variance.
+
+[Open the POS terminal](/pos)
+
+---
+
+## When to Close
+
+- End of the cashier's work session
+- End of the business day (typical for single-shift stores)
+- Shift handover to the next cashier (each cashier closes theirs, the next opens fresh)
+
+Don't leave shifts open overnight if you can help it — overnight shifts blur the daily-close line for accounting and complicate variance investigation.
+
+---
+
+## Step 1 — Trigger Close
+
+Click **Close Register** in the top bar. There's no keyboard shortcut — close is deliberate, always a click.
+
+The screen switches to **Shift Close** showing:
+
+- **Opened at** — when the shift started
+- **Cashier** — your name
+- **Sales count** — how many transactions
+- **Sales total** — gross revenue
+- **Refund count + total** — if any
+- **Expected cash** — `opening + cash sales − cash refunds + cash movements`
+
+The "expected cash" is what should be in your drawer right now, based on every transaction logged during the shift.
+
+> If your branch has **blind close** policy enabled, you won't see expected cash here — just the count-the-drawer input. See [Blind Close](#blind-close) below and the full [Shift Policies](/pos/shift-policies) reference.
+
+---
+
+## Step 2 — Count the Drawer
+
+Physically count every note and coin in the drawer. The screen shows a numpad — type the actual amount.
+
+Take your time. Re-count any denomination you're not sure about. Once you submit, you can't go back.
+
+> **Tip:** Before counting, set aside the float (the opening cash you started with) and count it separately. Then the rest is "cash from sales" — easier to verify against the expected number on screen.
+
+---
+
+## Step 3 — Variance
+
+The system computes:
+
+```
+variance = actual cash counted − expected cash
+```
+
+| Variance | Meaning | Action |
+|----------|---------|--------|
+| **0** | Drawer is exact | Save and close — perfect |
+| **Positive** (over) | More cash than expected | Possible: missed recording a refund, customer overpaid and you didn't give change. Investigate, document. |
+| **Negative** (short) | Less cash than expected | Possible: change given incorrectly, theft, missed entry. **Always investigate.** |
+
+For non-zero variance, the screen prompts for a **note** explaining the difference. Examples:
+
+- "Customer paid 1000, total was 850, gave 100 change — short 50, customer left before correction"
+- "Found extra 100 BDT in drawer, no record of source — flagged for manager review"
+
+---
+
+## Step 4 — Confirm Close
+
+Click **Close Register**. The system:
+
+1. Sets `shift.status = closed`
+2. Stamps `closedAt = now`
+3. Records `closingCash`, `expectedCash`, `cashDifference`
+4. Saves your variance note
+5. Generates the **Z-report** (downloadable from the close screen)
+6. Returns to the Shift Open screen, ready for the next session
+
+The shift record is now **immutable** — corrections must be done via cash journal entries, not by reopening the shift.
+
+---
+
+## The Z-Report
+
+The Z-report is the official end-of-shift summary. It includes:
+
+- **Cashier name + branch + shift dates/times**
+- **Sales** — count, gross revenue, VAT, net
+- **Refunds** — count, total
+- **Discounts** — auto-promo total, manual discount total, loyalty redemption total
+- **Payments** — breakdown by method (cash, bKash, Nagad, card, etc.)
+- **Cash reconciliation** — opening, cash sales, cash refunds, expected, counted, variance
+- **Notes** — your variance explanation (if any)
+
+Print one copy, file it. Some businesses also email a copy to head office finance.
+
+---
+
+## What Happens to the Data
+
+After close:
+
+| Where | What posts |
+|-------|------------|
+| **Orders module** | Each sale appears as a regular order — same as online orders. Filter by `channel: pos` to see POS only. |
+| **Inventory** | Stock decrements happen at sale time (already done before close). |
+| **Loyalty** | Points earned and redeemed (already done at sale time). |
+| **GL / Accounting** | Revenue, VAT, COGS, cash entries posted asynchronously per transaction. |
+| **Cash journal** | Opening cash, total cash sales, total cash refunds, closing cash variance — all reconcile to the cash GL account. |
+| **Reports** | Sales reports, variance trends, cashier performance — all updated nightly. |
+
+You don't trigger any of this manually — the order engine wires it all up.
+
+---
+
+## Investigating Variance
+
+Variance > 0.5% of sales is worth a look. Variance > 2% is a problem.
+
+Common causes:
+
+| Cause | How to detect | Fix |
+|-------|---------------|-----|
+| **Wrong change given** | Look for cash sales near round numbers (e.g. paid 1000 for 850 → owed 150 in change, gave 100) | Re-train cashier on change-counting |
+| **Off-by-one quantity** | Compare receipt count to actual items left | Use the scanner more, less manual entry |
+| **Discount applied without recording** | Look at high-discount sales | Require manager auth for discounts > 5% |
+| **Refund not entered** | Customer remembered taking item back, you forgot to refund | Always F9-Refund at the moment of return |
+| **Cash drawer left open** | Theft window during busy periods | Auto-close drawer after every sale |
+
+For repeated variances from one cashier, manager-level review of the X-reports during their shift can pinpoint the moment things drifted.
+
+---
+
+## Manager Override (When Variance Won't Reconcile)
+
+When variance falls outside the branch's configured thresholds (default: ৳100 absolute OR 0.5% of expected — either keeps you safe, **both** failing triggers override), the close is blocked at the API layer with `403 MANAGER_OVERRIDE_REQUIRED`.
+
+**What the cashier sees**:
+- Inline "Manager required" prompt
+- Reason textarea (required)
+- Credentials entry for a user with manager role
+
+**After manager auth**:
+1. The variance saves to the shift record
+2. A note is added: "Manager override: <reason>" + manager user id
+3. The cash journal posts a **variance line** (Dr / Cr `Cash Over/Short` account) so the trial balance still ties out
+4. Recurring overrides flag the cashier in cashier-performance reports
+
+Don't abuse this — every override is investigated by the finance team, and the Z-report clearly shows the override flag.
+
+Thresholds are configurable per branch — see [Shift Policies](/pos/shift-policies) for `varianceThresholdAbs`, `varianceThresholdPct`, and `managerOverrideRequired`.
+
+---
+
+## Blind Close
+
+When your branch policy has `blindCloseRequired: true`, the close flow changes:
+
+**For the cashier**:
+1. The close screen shows **no expected cash** — just the count input
+2. Count the drawer, enter the number, submit
+3. Shift transitions to **`blind_closed`** (not `closed`)
+4. Cashier is done — they can log out
+
+**Later, for the manager**:
+1. Open **Reports → Open Shifts → Blind-Closed**
+2. Review opening, sales, movements
+3. Enter the reconcile count (often the manager re-counts)
+4. Confirm — shift transitions to **`closed`**
+5. Variance is recorded at reconcile time, not at cashier close
+
+**Why this exists**: prevents cashiers from "counting to the expected number" — a form of theft where an experienced cashier knows exactly how much they need to fake-count to match. With blind close, they genuinely have to count what's there.
+
+Cost: slower close. Most branches don't need this — use it for high-volume or high-risk stores.
+
+---
+
+## Handover (pause and resume)
+
+When branch policy has `allowHandover: true`, the cashier can **pause** a shift instead of closing:
+
+1. **Pause Shift** button (next to Close Register)
+2. Shift transitions to `paused` — drawer rejects new sales
+3. Next cashier logs in and clicks **Resume Shift** — it reopens for them
+
+The shift record tracks both cashiers. The Z-report at eventual close shows the handover moment + who worked which hours.
+
+**Use for**:
+- Lunch breaks (short pause, same cashier resumes)
+- Morning/evening shift change at the same register
+- Temporary absence where you don't want to close + reopen (loses the opening-float setup overhead)
+
+**Don't use for**:
+- Multi-day shifts — just close and re-open the next day
+- Across-branch handover — shifts are branch-scoped
+
+See [Shift Policies](/pos/shift-policies) for the `allowHandover` setting.
+
+---
+
+## Auto-close (abandoned shifts)
+
+Sometimes a cashier walks out without closing. By default, shifts stay open indefinitely — bad for day-close accounting.
+
+When branch policy has `autoCloseEnabled: true`, a cron job auto-closes open shifts past `autoCloseTime` (e.g. 23:59 Dhaka). The auto-close:
+
+- Sets `closingCash = expectedCash` (zero variance by definition)
+- Transitions the shift to **`orphaned_closed`** (distinct from normal `closed`)
+- Flags the shift for next-morning manager review
+- Notifies the branch manager
+
+The manager's job next morning: inspect the orphaned shift, count the physical drawer, record actual variance via cash journal adjustments. The `orphaned_closed` tag prevents it from being confused with a genuine close in reports.
+
+---
+
+## What's next?
+
+- [Troubleshooting](/commerce-bd/docs/pos/troubleshooting) — when the close fails or numbers look wrong
+- [Daily Operations](/commerce-bd/docs/accounting/daily-operations) — what finance does with the Z-report data
+- [Branch operations](/commerce-bd/docs/platform/branches) — multi-branch shift coordination

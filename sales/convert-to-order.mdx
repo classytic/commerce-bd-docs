@@ -1,0 +1,107 @@
+# Convert a Quote to an Order
+
+When a customer accepts a quote, the next step is to turn it into a real order — a fulfillable record that reserves stock, takes payment, and ships goods.
+
+---
+
+## When to convert
+
+Convert as soon as the quote is **Accepted**. Don't wait — converting:
+
+- Locks the price (no more catalog drift)
+- Reserves stock against future demand
+- Starts the order's payment and fulfillment timer
+
+If you wait days between accept and convert, two things can go wrong:
+
+1. **Stock runs out** — someone else buys the same items in the meantime
+2. **Catalog price changes** — the quote price is preserved on conversion, so this is safe, but only if you actually convert
+
+---
+
+## How to convert
+
+1. Open an accepted quote
+2. Click **Convert to order**
+3. Confirm
+
+You'll be redirected to the new order's detail page. The order number looks like `ORD-2026-0123`.
+
+[Go to Quotations](/dashboard/quotations)
+
+---
+
+## What conversion produces
+
+Conversion creates **one new order** with:
+
+- **All the quote's lines** copied 1:1 — same products, same quantities, same agreed prices
+- **The customer** (linked via the same customer record or snapshot)
+- **The currency** from the quote
+- **A back-reference** to the source quote — so you can trace the order back to its quote at any time
+
+The original quote moves to **Converted** status and is **locked**:
+
+- You can no longer edit it
+- You can no longer change its lines
+- It keeps a `convertedAt` timestamp and a link to the order
+
+The quote becomes a permanent record of what was agreed.
+
+---
+
+## What conversion does NOT do
+
+Conversion is just the order **creation** step. It does not:
+
+- Take payment (the order starts in `payment.status: pending`)
+- Reserve stock automatically (depends on your order config — most setups reserve at this step, but some defer to checkout)
+- Ship anything (fulfillment is a separate step on the order)
+- Send an invoice
+
+These are the order's job, not the quote's. See the order's own actions for what's next.
+
+---
+
+## Idempotency: re-convert is safe-blocked
+
+If you click **Convert** twice (double-click, network blip, page reload), only the first one creates an order. The second click returns an error like:
+
+> Quotation QUO-2026-0042 has already been converted to ORD-2026-0123.
+
+This is a safety mechanism. The quote can only produce one order, ever. If you actually need to fulfill the same quote a second time (rare — typically happens for repeat purchases by the same B2B customer):
+
+- Clone the quote into a new draft
+- Re-accept and re-convert
+
+This keeps every order traceable to a single, distinct quote.
+
+---
+
+## Channel override on conversion
+
+By default, the order inherits the quote's channel (`b2b`, `web`, etc.). You can override at convert time — useful when:
+
+- A B2B quote actually gets fulfilled through your retail flow
+- A walk-in negotiation results in an online-style fulfillment
+
+The override only affects the new order. The quote keeps its original channel for reporting.
+
+---
+
+## What to do after converting
+
+Once the order exists, the work moves to the **order detail page**:
+
+1. **Payment** — record an advance, take a deposit, or send a payment link
+2. **Fulfillment** — pick, pack, and ship (or mark as ready for pickup)
+3. **Invoice** — generate a tax invoice (Mushak 6.3 if your business is VAT-registered)
+
+The quote-to-order flow is now complete from the sales side. Everything downstream is normal order handling.
+
+---
+
+## What's next?
+
+- [Expiry, Renewal & Cleanup](/dashboard/orders/learn/expiry-renewal) — handling quotes that didn't convert
+- [Roles & Permissions](/dashboard/orders/learn/quotation-permissions) — who's allowed to do what

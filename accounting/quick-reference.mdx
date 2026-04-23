@@ -1,0 +1,53 @@
+# Quick Reference
+
+A one-page cheat sheet for daily accounting tasks.
+
+## Daily checklist
+
+1. **Start of day** — Log in, check your branch is selected in the top-left switcher
+2. **During the day** — POS sales, vendor bill entries, and customer payments post automatically
+3. **End of day** — Go to **Day Close** and click **Close Day**. This locks the day's entries from further edits.
+
+## Common tasks
+
+| Task | Where to go | What to do |
+|------|------------|------------|
+| Record a supplier bill | Vendor Bills → Post Bill | Enter supplier, amount, due date. System creates A/P entry |
+| Pay a supplier | Vendor Bills → Pay | Select open bill, choose payment method. System credits cash, debits A/P |
+| Issue a customer invoice | Customer Invoices → Post Invoice | Enter customer, lines, terms. System creates A/R entry |
+| Record customer payment | Customer Invoices → Receive Payment | Select open invoice, enter amount. System debits cash, credits A/R |
+| Generate VAT invoice (Mushak 6.3) | Musok (VAT) → Generate | Link to source order/JE, fill buyer info. Auto-calculates VAT per line |
+| File monthly return | VAT Return (9.1) or TOT Return (9.2) | Select period, review totals, submit. System aggregates from journal entries |
+| Record a VDS/TDS certificate | Withholding Certs → Create | Enter certificate details. Tracks for Mushak 9.1 reconciliation |
+| Check unpaid bills | A/P Aging | Shows all open vendor bills grouped by age (current, 30d, 60d, 90d+) |
+| Check unpaid invoices | A/R Aging | Shows all open customer invoices grouped by age |
+| Run a report | Reports section | Trial Balance, Income Statement, Balance Sheet, Cash Flow, General Ledger |
+
+## Key shortcuts
+
+- **Branch filter on reports**: leave blank for company-wide, select a branch for that branch only
+- **Date range**: most reports default to current fiscal year (July 1 to today). Change with the date picker.
+- **Export**: every report and data table has a CSV export button in the top-right corner
+
+## Account codes to know
+
+| Code | Name | What it tracks |
+|------|------|---------------|
+| 1111 | Cash in Hand | Physical cash at the branch |
+| 1112 | Bank Account | Bank balance |
+| 1122 | Mobile Banking | bKash, Nagad, Rocket |
+| 1150 | Input VAT | VAT paid on purchases (claimable) |
+| 1310 | Inventory | Stock value on hand |
+| 2111 | Accounts Payable | What you owe suppliers |
+| 1141 | Accounts Receivable | What customers owe you |
+| 2132 | VAT Output | VAT collected on sales (owe to NBR) |
+| 4111 | Sales Revenue | Total sales income |
+| 5111 | Cost of Goods Sold | Cost of items sold |
+
+## When something looks wrong
+
+1. **Journal entry seems incorrect** — find the source transaction (POS sale, purchase, bill) and check its details. Auto-posted entries reflect the source.
+2. **Trial balance doesn't balance** — run for all branches (consolidated). Per-branch views may exclude inter-branch settlement entries.
+3. **VAT return totals mismatch** — check the withholding certificates page for unreconciled VDS/TDS credits.
+4. **Day won't close** — check for draft journal entries that need posting or voiding first.
+5. **Can't edit an old entry** — the day has been closed. Ask an admin to reopen if a correction is needed.

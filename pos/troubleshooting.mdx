@@ -1,0 +1,260 @@
+---
+title: POS Troubleshooting
+description: Common cashier issues and how to fix them — barcodes, payments, stock, refunds, network outages
+---
+
+# Troubleshooting
+
+When the POS misbehaves, walk through this list before escalating.
+
+---
+
+## Scanner Issues
+
+### Scanner doesn't add to cart
+
+- **Check focus.** Click anywhere in the cart area first — scanners type into whichever input has focus.
+- **Check the barcode.** If the scanner beeps but nothing happens, the SKU isn't in the catalog. Look it up by hand to confirm.
+- **Check scanner settings.** Most scanners need to be set to "USB HID keyboard" mode. If it's in serial mode, the system can't read it.
+
+### Scanner adds the wrong product
+
+The barcode is on a different SKU. Either:
+
+- A duplicate barcode in the catalog (search for it — fix in [Products > Edit > Barcode tab](/dashboard/products))
+- A re-used label from a previous batch (relabel with the correct one)
+
+---
+
+## Cart Issues
+
+### Discount won't apply
+
+- **Promotion code rejected** — possible: code is expired, exhausted, doesn't match the cart conditions (e.g. min order amount). Check the [Promotion program's rules](/commerce-bd/docs/promotions/programs).
+- **Manual discount asks for manager auth** — the discount exceeds your role's limit. Get a manager.
+- **Loyalty redemption shows zero available** — customer's balance is 0, or they're below the min-points threshold for redemption.
+
+### Cart total looks wrong
+
+- **VAT included or excluded?** Check Platform Config — your store's pricesIncludeVat setting determines if the line price is already VAT-in or if VAT is added at the end.
+- **Tier discount applied?** If the customer has a loyalty tier with a discount %, it auto-applies. Click into the discount line to see the source.
+- **Promotion auto-applied** that shouldn't have? Check active programs — pause any that are firing wrong.
+
+---
+
+## Payment Issues
+
+### "Payment method not enabled"
+
+The method isn't turned on in [Platform Config](/commerce-bd/docs/platform/payment-methods). A platform admin needs to enable it.
+
+### "Payment amount doesn't match"
+
+You're using **Split** and the lines don't add up to the total. Adjust amounts so the sum equals the cart total.
+
+### Network timeout during checkout
+
+The system uses **idempotency keys** so retrying after a timeout is safe — the same order won't double-post.
+
+If the timeout happens:
+1. Wait 10 seconds
+2. Try checkout again — same idempotency key, same result
+3. Check Order History (F9) — the order may have actually completed; you just didn't see the confirmation
+
+If after 30 seconds the cart still won't close, log the customer's details + payment reference + what they paid and complete the order manually after the network is back.
+
+---
+
+## Stock Issues
+
+### "Out of stock" but you can see the product on the shelf
+
+Stock is **per-branch** — the system thinks this branch has zero. Check:
+
+- **Was a recent sale logged twice?** Look at Order History.
+- **Was a transfer received but not closed?** Check **Inventory > Transfers** — pending transfers don't add to stock.
+- **Was an audit run that flagged variance?** A recent stock count may have set the system stock to zero pending reconciliation.
+
+Quick fix: do a manual adjustment in **Inventory > Stock Levels > [SKU] > Adjust** with reason "POS variance, found on shelf". Then escalate to inventory manager to investigate the root cause.
+
+### "Insufficient stock" at checkout
+
+The system pre-validates stock before order creation. If insufficient, the cart shows which item is short.
+
+Options:
+- Reduce the quantity to what's available
+- Remove the item, offer the customer a substitute
+- Take the customer's contact info, do a special order from a transfer
+
+---
+
+## Customer / Loyalty Issues
+
+### Loyalty card scan returns no customer
+
+- Check the card ID was entered fully (some scanners truncate at the dash)
+- The card may belong to a different branch's customer record — search by phone instead
+- The card may be from a deactivated member — they need reactivation in [Customers > Loyalty tab](/commerce-bd/docs/loyalty/members)
+
+### Customer earned wrong number of points
+
+Points are earned per [earning rules](/commerce-bd/docs/loyalty/earning-rules) — check:
+
+- Was the right rule active at sale time?
+- Did the customer's tier multiplier apply (Gold = 1.5×, etc.)?
+- Was the order amount above the rule's minimum?
+- Did a rule cap (max points per transaction) hit?
+
+Look at the customer's loyalty history (`/dashboard/customers/[id]` → Loyalty tab) — each earn transaction shows the rule that fired.
+
+---
+
+## Shift Issues
+
+### "Manager override required" — can't close
+
+Your variance is outside the branch's accepted threshold (default: ৳100 or 0.5%). The server blocks the close until a manager authorizes.
+
+- Stay on the screen; an override prompt appears with a reason textarea
+- Get a manager physically at the terminal
+- They enter their credentials + the variance reason
+- Close proceeds
+
+If no manager is available, you can't close. **Don't walk away** — either wait, or have someone else resume the shift if handover is enabled.
+
+### "Opening cash must be exactly BDT X"
+
+Your branch has `requiredOpeningFloat` policy set. Enter the exact amount shown in the error.
+
+If the cash drawer actually has a different amount, you have a problem before you open — don't fudge the number. Count again, escalate to a manager, start the day correctly.
+
+### Can't open shift — "shift already open"
+
+Another cashier (or you, from another browser/terminal) already has a shift open for this branch. Options:
+
+- If it's yours on another device, resume there and close first
+- If it's someone else's, ask them to close
+- If it's orphaned (the cashier left without closing), manager can auto-close from Reports → Open Shifts
+
+### Shift won't close, but no variance — it hangs
+
+- Check for pending cash movements that haven't posted (network hiccup)
+- Refresh the page, the close attempt restarts
+- If still stuck, open Reports → Open Shifts to see the server-side shift state; `blind_closed` means it already transitioned and is waiting on manager reconcile (not cashier action)
+
+### Closed shift by mistake
+
+Closed shifts are **immutable**. You cannot reopen.
+
+- For wrong cash count: post a cash journal entry to correct (manager / finance task)
+- For wrong cashier name: file a note, train staff to verify login before opening
+
+### Multiple open shifts at one branch
+
+Shouldn't happen — the system enforces one active shift per branch. If Reports → Open Shifts shows two, it's a data inconsistency. Escalate to platform admin.
+
+### "Blind-closed, awaiting reconcile"
+
+You're a cashier and the shift says `blind_closed` — that's correct. Your job is done. A manager completes reconcile from the Reports → Open Shifts → Blind-Closed page. If you're the manager and the reconcile isn't happening, see [Closing Shift & Reports → Blind Close](/pos/closing-shift-and-reports#blind-close).
+
+---
+
+## Park / Resume Issues
+
+### Parked orders disappeared
+
+- You used incognito mode, cleared storage, or logged into a different user — parked orders are per-browser-per-user
+- Orders older than **8 hours** auto-expire
+- Max 5 parked at once; trying to park a 6th without resuming/deleting one fails silently on some installs
+
+Parking is volatile by design — don't rely on it for next-day work. If you really need to save a cart long-term, take a photo of the screen and rebuild later.
+
+### Parked order's price changed
+
+Pricing re-runs at resume time. If the product was re-priced between park and resume, the new price applies. The cart items themselves (which products, quantities) are preserved exactly.
+
+---
+
+## Cash Movement Issues
+
+### Can't find the reason code I need
+
+Your branch restricts which codes are allowed. Check **Branches → {branch} → POS Policy → Allowed Reason Codes** — manager can extend the list. Avoid `other` unless truly nothing fits.
+
+### Cash movement adjusted expected cash but drawer count is still off
+
+Variance at close reflects all movements — if you recorded them correctly, math ties out. Common causes of residual variance:
+
+- Forgot to record a movement (always record immediately, never "I'll do it later")
+- Entered the wrong direction (Cash In vs Cash Out)
+- Typo in the amount
+
+Fix: post a `correction` movement to align the books, with a note explaining. See [Cash Movements → correction](/pos/cash-movements).
+
+---
+
+## Refund Issues
+
+### Refund button missing
+
+- The order is older than the refund window (configurable per branch — check with manager)
+- You don't have refund permission — needs `branch_manager` or higher
+- The order is from a different branch (cross-branch refunds are blocked by default)
+
+### Refund amount doesn't match what customer paid
+
+- Original used a discount → refund applies proportionally (10% off original = 10% off refund)
+- Loyalty was redeemed → those points are credited back, refund cash is reduced
+- Tax rate has changed since the original sale → refund uses the original sale's tax (not current)
+
+If something looks really off, cancel the refund and escalate to finance — they'll do a manual journal entry.
+
+---
+
+## Receipt / Printer Issues
+
+### Receipt won't print
+
+- Check printer is on, has paper, USB plugged in
+- Reload the print queue (most cashiers don't have access — call IT)
+- Use **Email Receipt** as fallback
+
+### Receipt prints garbled / wrong size
+
+- Wrong printer driver — IT problem, not POS
+- Browser zoom is set wrong — reset to 100%
+
+---
+
+## Network Outage
+
+The POS **requires network connectivity** for checkout (real-time stock check, payment validation). If the connection drops:
+
+1. Stop accepting card / mobile payments (you can't validate them)
+2. For cash sales: write down the items + amount on paper, give a handwritten receipt
+3. When connectivity returns, manually enter those sales (one-by-one in Order History)
+4. Reconcile cash at end-of-shift accounting for the manual sales
+
+There's no "offline mode" for the POS — by design (offline orders create stock conflicts and double-redemption risks).
+
+---
+
+## When to Escalate
+
+Escalate to your manager / IT if:
+
+- Variance > 5% of shift sales
+- Repeated variance from the same cashier across days
+- Stock is consistently wrong on the same SKU (data corruption?)
+- POS won't open or shift won't close even after network is restored
+- Loyalty balances visible to the cashier don't match what the customer reports
+
+Don't try to fix data issues from the cashier interface — finance and IT have the right tools and accountability.
+
+---
+
+## What's next?
+
+- [Closing Shift & Reports](/commerce-bd/docs/pos/closing-shift-and-reports) — variance handling
+- [Loyalty Members](/commerce-bd/docs/loyalty/members) — customer-side loyalty issues
+- [Branch operations](/commerce-bd/docs/platform/branches) — branch-level escalation

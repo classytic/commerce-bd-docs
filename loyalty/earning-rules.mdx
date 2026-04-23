@@ -1,0 +1,134 @@
+---
+title: Loyalty Earning Rules
+description: Design how customers earn points — order amount, fixed actions, category bonuses, tier multipliers
+---
+
+# Earning Rules
+
+Rules decide **how many points** a member earns and **when**. You can run several rules at once — the priority field controls the order they apply.
+
+[Open Earning Rules](/dashboard/loyalty/earning-rules)
+
+---
+
+## Rule Types
+
+### 1. Order
+
+Points based on the order amount. Most common rule.
+
+- **Reward modes**:
+  - **Fixed** — flat points per order (e.g. "10 points per order over BDT 500")
+  - **Per-unit** — N points per BDT spent (e.g. "1 point per BDT 10")
+  - **Multiplier** — multiplies the base points already earned
+- **Conditions** — minimum order amount, eligible categories, eligible tiers, day-of-week, date range
+
+Example — "1 point per BDT 10 spent, minimum order BDT 200":
+```
+Reward: per-unit, 1 point / 10 BDT
+Min amount: 200
+```
+
+### 2. Action
+
+Fixed points for a one-time event. Use for engagement boosts.
+
+Common actions:
+- **signup** — first-time enrollment bonus
+- **birthday** — annual bonus on the customer's birthday
+- **first-order** — extra points when the first order completes
+- **review** — points for writing a product review
+
+Example — "100 points on signup":
+```
+Type: action
+Action: signup
+Reward: fixed, 100 points
+```
+
+### 3. Category
+
+Bonus points when an order includes specific product categories. Stacks with the base order rule.
+
+Example — "Double points on Electronics":
+```
+Type: category
+Categories: [electronics]
+Reward: multiplier, 2.0
+```
+
+### 4. Tier Bonus
+
+Multiplier that ONLY applies to members of certain tiers. Lets you reward your best customers without changing the base rule.
+
+Example — "Gold members earn 1.5× on weekends":
+```
+Type: tier_bonus
+Tiers: [gold]
+Day-of-week: [saturday, sunday]
+Reward: multiplier, 1.5
+```
+
+---
+
+## Caps & Safety Rails
+
+Every rule supports two caps to protect your budget:
+
+- **Max points per transaction** — cap a single order's earnings (e.g. "no order earns more than 1000 points")
+- **Max applications per period** — limit how often the rule can fire for one customer (e.g. "birthday bonus once per year")
+
+Set conservative caps before you launch — easier to relax later than to claw back over-earned points.
+
+---
+
+## Priority — How Rules Compose
+
+When multiple rules match an order, they evaluate **lowest priority first**. The earlier a rule runs, the more it can be modified by later rules.
+
+Practical pattern:
+- Priority **10** — base "1 point per BDT 10" order rule
+- Priority **20** — category bonus "2× on Electronics"
+- Priority **30** — tier multiplier "Gold 1.5×"
+
+For a Gold customer buying BDT 1000 of Electronics:
+1. Base rule earns `100 points`
+2. Category multiplier doubles → `200 points`
+3. Tier multiplier × 1.5 → `300 points`
+
+If priorities are equal, ordering is undefined — set explicit priorities to avoid surprises.
+
+---
+
+## Activate, Pause, Edit
+
+| Status | What it does |
+|--------|--------------|
+| `draft` | Saved but not firing |
+| `active` | Running on every qualifying order |
+| `paused` | Stopped firing — existing earned points unaffected |
+| `expired` | Past the end date or admin-archived |
+
+Click **Pause** during sales when you want to suspend a rule without deleting it. Click **Activate** to resume.
+
+Editing a rule while it's `active` takes effect on the **next** order — no retroactive recalculation of past earnings.
+
+---
+
+## Common Recipes
+
+| Goal | Rule setup |
+|------|-----------|
+| Welcome bonus | `action`, `signup`, fixed 100 pts |
+| 1% cashback | `order`, per-unit, 1 pt / 100 BDT |
+| Weekend boost | `order`, multiplier 1.5, day-of-week = sat/sun |
+| Win-back | `action`, `reactivation`, fixed 200 pts after 90 days inactive |
+| Birthday gift | `action`, `birthday`, fixed 50 pts |
+| Premium-tier reward | `tier_bonus`, tiers = [platinum], multiplier 2.0 |
+
+---
+
+## What's next?
+
+- [Tiers](/commerce-bd/docs/loyalty/tiers) — pair rules with tier multipliers for compounding rewards
+- [Redemption](/commerce-bd/docs/loyalty/redemption) — what members do with the points they earn

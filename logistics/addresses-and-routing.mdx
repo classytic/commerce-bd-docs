@@ -1,0 +1,128 @@
+# Addresses & Routing
+
+Customer addresses drive fulfillment. If the carrier can't parse the address, the package doesn't ship. This page covers the canonical address shape, the required fields per carrier, and how routing IDs (Pathao area / zone / city) get captured and preserved.
+
+---
+
+## The canonical shape
+
+Every shipping address in the system has exactly this structure:
+
+| Field | Required? | Example |
+|---|---|---|
+| `name` | Yes | Jahangir Alam |
+| `phone` | Yes | 01711-234567 |
+| `line1` | Yes | House 42, Road 7, Block C |
+| `line2` | No | Apt 4B, near Dhanmondi Lake |
+| `city` | Yes | Dhanmondi |
+| `state` | Yes | Dhaka |
+| `postalCode` | No | 1209 |
+| `country` | No (defaults BD) | BD |
+| `areaId` | No | 8612 |
+| `zoneId` | No | 298 |
+| `providerRefs` | No | See below |
+
+The first eight fields are mandatory for anything to ship. The last three are **routing IDs** — optional but strongly recommended for Pathao.
+
+---
+
+## Routing IDs — what they are
+
+Pathao (and RedX, and other API-based couriers) don't parse free-text addresses. They expect **numeric IDs** that map to their internal city / zone / area tables.
+
+Without a valid `areaId` and `zoneId`:
+- Pathao CSV uploads are rejected
+- Delivery time estimates are wrong
+- COD reconciliation breaks because the order isn't found in Pathao's system
+
+The storefront address picker (guest checkout, account addresses) uses the bd-areas area picker, which captures these IDs at entry time.
+
+---
+
+## How routing IDs flow
+
+```
+Storefront picker           →    Guest checkout / Address book
+  { division, area,              { addressLine1, city, division,
+    areaId, zoneId,                providerAreaIds: { pathao:{...} } }
+    providerRefs }
+       │
+       ▼
+  toFulfillmentAddress()    →    Canonical shape
+  translator                     { line1, state, city,
+                                   areaId, zoneId,
+                                   providerRefs: { pathao: {...} } }
+       │
+       ▼
+  Fulfillment document      →    Persisted in order_fulfillments
+                                 (schema: addressSchema with Mixed
+                                  providerRefs bag)
+       │
+       ▼
+  Pathao CSV exporter       →    Reads providerRefs.pathao.{cityId,
+                                 zoneId, areaId} first. Falls back to
+                                 city name match if absent.
+```
+
+The translator is the single choke point that keeps FE / POS / admin shapes aligned with the canonical schema. Don't bypass it.
+
+---
+
+## What each channel captures
+
+**Storefront checkout** — picker captures areaId + zoneId automatically. The `providerAreaIds` bag is populated for the chosen carrier. No work on the admin side.
+
+**POS delivery order** — when a store clerk converts a walk-in to a shipment, they pick division / city / area via the same bd-areas picker, so routing IDs are captured.
+
+**Admin-created orders** — the admin order form uses the same picker. If an admin types the address free-form, routing IDs will be missing and Pathao export will fall back to name matching (less reliable).
+
+**Manual edits to an existing fulfillment** — same picker, same behavior. Re-selecting the area re-stamps routing IDs.
+
+---
+
+## The providerRefs bag
+
+This field stores carrier-specific routing IDs without the address schema having to know about every carrier:
+
+```json
+{
+  "providerRefs": {
+    "pathao": { "cityId": 1, "zoneId": 298, "areaId": 8612 },
+    "redx":   { "areaId": 1234 },
+    "steadfast": { /* ... future */ }
+  }
+}
+```
+
+Advantages:
+- Adding a new carrier doesn't require a schema migration
+- Switching from Pathao to RedX mid-order doesn't lose the Pathao IDs — both sit in the bag, and whichever exporter runs picks its own key
+- Easy to inspect for debugging: `db.order_fulfillments.findOne({...}).shippingAddress.providerRefs`
+
+---
+
+## Validation
+
+The address schema enforces the first-eight-fields contract at the Mongoose layer. Missing `line1`, `city`, or `state` → `400 VALIDATION_ERROR`, the fulfillment never gets created, the order sits without a shippable fulfillment.
+
+Routing IDs are **not validated for existence** against Pathao's live tables — they're stored as given. If the ID turns out to be invalid, you'll see the error at CSV upload time, not at order placement. Run a dry-run export before bulk-uploading to catch stale IDs.
+
+---
+
+## Updating an address after placement
+
+If a customer calls to change delivery address after the order is placed:
+
+1. Open the order → **Shipping** tab → click the fulfillment
+2. **Edit Shipping Address**
+3. Re-pick division / area so routing IDs refresh
+4. Save
+
+The fulfillment's `shippingAddress` is updated in place. If a tracking label was already generated, you'll need to cancel it and re-export the CSV.
+
+---
+
+## Related
+
+- [Pathao CSV Export](/logistics/pathao-export) — what to do with the captured IDs
+- [POS Delivery Orders](/pos/delivery-orders) — how in-store delivery orders capture addresses

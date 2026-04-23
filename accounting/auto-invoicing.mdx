@@ -1,0 +1,61 @@
+# Auto-Invoicing
+
+The system can create invoices automatically when sales, purchases, or POS transactions happen. You control the policy per branch.
+
+---
+
+## Sales invoices (from orders)
+
+When a customer places an order, the system can auto-create an invoice.
+
+| Policy | What happens |
+|--------|--------------|
+| **Off** (default) | No auto-invoice. Create manually from the invoices page. |
+| **On Order** | Invoice created as draft when order is confirmed. Post manually. |
+| **On Payment** | Invoice created and posted when customer pays. Fully automatic. |
+
+> Set the policy in your branch settings or ask your admin to set the `INVOICE_AUTO_SALES` env variable.
+
+---
+
+## Vendor bills (from purchases)
+
+When you receive goods from a supplier, the system can auto-create a bill.
+
+| Policy | What happens |
+|--------|--------------|
+| **Off** (default) | No auto-bill. Create manually. |
+| **On Receive** | Bill created as draft when goods are received in warehouse. |
+
+---
+
+## POS receipts
+
+For point-of-sale transactions, receipts can be generated automatically.
+
+| Policy | What happens |
+|--------|--------------|
+| **Off** (default) | No auto-receipt. |
+| **Receipt per Transaction** | One receipt per POS sale. Immediate, no batching. |
+| **Receipt per Day** | One consolidated receipt at day-close. Less paperwork. |
+
+> POS receipts post immediately — they don't need manual posting since cash is collected at the time of sale.
+
+---
+
+## How it works technically
+
+Auto-invoicing listens to events from other modules:
+
+- **Order confirmed** event -> creates customer invoice (if policy is `on_order`)
+- **Payment received** event -> creates and posts customer invoice (if policy is `on_payment`)
+- **Goods received** event -> creates vendor bill (if policy is `on_receive`)
+- **POS day-close** event -> creates consolidated receipt (if policy is `receipt_per_day`)
+
+All auto-created invoices are linked back to their source document (order ID, purchase ID, etc.) so you can always trace where they came from.
+
+---
+
+## What's next?
+
+- [Recurring & Reminders](/dashboard/accounting/learn/recurring-reminders) — subscription billing and payment follow-ups

@@ -1,0 +1,70 @@
+# Which business type am I?
+
+NBR recognizes **seven** VAT regimes. Your branch picks one — it decides
+which form you file, what you can claim, and how your cashier screens behave.
+
+## Quick decision tree
+
+```
+Annual turnover < BDT 50 lakh? ───────────► COTTAGE_EXEMPT
+                                           (no VAT, no filing)
+
+BDT 50 lakh – BDT 3 crore? ───────────────► SME_TOT
+                                           (flat 4% on turnover, Mushak 9.2)
+
+> BDT 3 crore AND you import goods? ──────► IMPORTER
+                                           (pay CD+SD+AT+VAT at customs,
+                                            resell with input credit offset)
+
+> BDT 3 crore AND you're an RMG factory? ─► RMG_EXPORTER
+                                           (bonded warehouse, zero-rated
+                                            exports, utility VAT exemption)
+
+> BDT 3 crore AND you're IT/software? ────► IT_SERVICES
+                                           (5% ITES domestic, zero-rated
+                                            export, SEZ/BHTC rebate)
+
+> BDT 3 crore AND you sell services? ─────► SERVICE_PROVIDER
+                                           (15% VAT, VDS deducted by
+                                            corporate clients)
+
+Otherwise ────────────────────────────────► STANDARD_VAT
+                                           (15%, full input credit,
+                                            Mushak 9.1)
+```
+
+## What changes per regime
+
+| Regime | Charges VAT? | Input credit? | Form | VDS obligation |
+|---|---|---|---|---|
+| COTTAGE_EXEMPT | No | No | None | No |
+| SME_TOT | 4% TOT (not VAT) | No | 9.2 | No |
+| STANDARD_VAT | 15% | Yes | 9.1 | Yes (as buyer) |
+| IMPORTER | 15% | Yes | 9.1 | Yes (as buyer) |
+| RMG_EXPORTER | 0% export / 15% DTA | Yes | 9.1 | Yes (as buyer) |
+| IT_SERVICES | 5% / 0% export | Yes | 9.1 | Yes (as buyer) |
+| SERVICE_PROVIDER | 15% | Yes | 9.1 | Yes (withheld from us) |
+
+## Choosing when unclear
+
+- **Mixed activity?** Pick the one that covers your PRIMARY revenue stream.
+  You can have multiple branches on different regimes (chain with an RMG
+  factory + retail outlets is common).
+- **Growing past BDT 3 crore?** You MUST migrate from SME_TOT to
+  STANDARD_VAT the month you cross. Don't wait — late migration triggers
+  audit penalties.
+- **Not sure?** Start at STANDARD_VAT. It's the safe default and the
+  system never accidentally suppresses VAT on you.
+
+## Where this setting lives
+
+Dashboard → Platform Settings → Branches → Edit branch → **Business Type**.
+
+## Related guides
+
+- [SME / TOT basics](sme-tot-basics.md) — for SME_TOT branches
+- [RMG exporter basics](rmg-exporter-basics.md) — for RMG_EXPORTER branches
+- [Importer basics](importer-basics.md) — for IMPORTER branches
+- [IT / software basics](it-software-basics.md) — for IT_SERVICES branches
+- [Service provider VDS](service-vds-basics.md) — for SERVICE_PROVIDER
+- [VAT basics](vat-basics.md) — foundation everyone should read

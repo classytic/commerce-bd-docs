@@ -1,0 +1,87 @@
+---
+title: Supplier Roles & Permissions
+description: Who can manage vendors, post bills, pay them, and issue credit notes
+---
+
+# Roles & Permissions
+
+| Action | Required role |
+|--------|---------------|
+| View suppliers list + profiles | Any branch member with `inventory.supplierView` |
+| Create / edit supplier | `inventory.supplierManage` (typically `branch_manager+`) |
+| Deactivate supplier | `admin`, `superadmin` |
+| Set credit terms | `inventory.supplierManage` (yes — supplier credit is set on the supplier) |
+| Post a vendor bill | `finance-manager`, `finance-admin` |
+| Pay a bill | `finance-manager`, `finance-admin` |
+| Issue credit/debit note | `finance-manager`, `finance-admin` |
+| Post opening balance | `finance-admin` only |
+| View A/P ledger statement | `finance-manager` or branch_manager+ |
+
+---
+
+## Why Opening Balance Is Finance-Admin Only
+
+Posting an opening balance creates a journal entry that affects:
+
+- **A/P (2111)** — increases what you owe
+- **Retained Earnings (3310)** — decreases owners' equity
+
+Get the amount wrong by a decimal and the trial balance won't reconcile from day one. Restricting to `finance-admin` ensures someone who understands the GL impact is doing it.
+
+---
+
+## Why Tax Flags Aren't Restricted to Finance
+
+Truncated rate, bonded warehouse, fiscal position, BIN — these all live on the supplier profile and are editable by anyone with `inventory.supplierManage`. That's intentional:
+
+- These are **operational** facts about the supplier, not financial decisions
+- The procurement team typically knows whether a vendor charges 5% or 15% VAT — they're the ones invoicing
+- The accounting impact happens automatically at bill-post time based on the flag
+
+That said: if a flag is set wrong, all subsequent bills post incorrectly. Train your procurement team to confirm the flags at supplier onboarding and never silently change them on a vendor that already has bills.
+
+---
+
+## Branch Scoping (or Lack Thereof)
+
+Suppliers are **company-wide** — every branch sees the same vendor list. So:
+
+- Any branch member can list/view suppliers
+- The "active branch" filter doesn't change which suppliers appear
+- Bills, however, ARE branch-scoped — a bill is tagged to the branch that received the goods
+
+This means a procurement team at head office can manage the supplier master, while branch staff post bills against those vendors as needed.
+
+---
+
+## Audit Trail
+
+Every write produces an audit entry visible in the supplier's Activity drawer:
+
+- **Profile edit** — who, when, before/after values for every changed field
+- **Tax flag toggle** — emphasized in the audit ("Truncated rate: off → on" with timestamp + user)
+- **Deactivation** — flagged separately as `supplier:deactivated` event
+- **Opening balance JE** — links to the journal entry id
+
+For compliance audits (NBR or external), pull the supplier's full audit history via `GET /audit?resourceId=:supplierId&type=supplier`.
+
+---
+
+## Common Patterns
+
+**"Procurement should manage suppliers; finance should pay bills"**
+Default — works out of the box. Procurement gets `branch_manager` (includes `inventory.supplierManage`). Finance gets `finance-manager` (includes pay/credit-note/opening-balance).
+
+**"Read-only access for auditors"**
+Give them `viewer` branch role — they see suppliers + bills + ledger but can't post anything.
+
+**"Branch managers should only see their branch's bills"**
+Currently the supplier profile aggregates bills across branches. Use the **branch filter** on the bill list (Accounting > Vendor Bills) to scope per branch. Per-branch supplier views are not built today.
+
+---
+
+## What's next?
+
+- [Profile & Tax Setup](/commerce-bd/docs/suppliers/profile-and-tax) — what each role can change
+- [A/P Ledger](/commerce-bd/docs/suppliers/ap-ledger) — the finance workflow
+- [Platform Permissions](/commerce-bd/docs/platform/permissions) — how roles are assigned in the first place

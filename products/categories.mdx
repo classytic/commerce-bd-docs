@@ -1,0 +1,174 @@
+---
+title: Categories
+description: Organize products into a tree — slugs, parents, display order, and per-category VAT rates
+---
+
+# Categories
+
+Categories are the **taxonomy** of your catalog. They form a tree (parent → child) and let customers browse by section. They also drive per-category VAT overrides if you sell across tax brackets.
+
+[Open Categories](/dashboard/categories)
+
+---
+
+## Add a Category
+
+1. **Categories** → **New Category**
+2. Fill in:
+   - **Name** — display label (e.g. "Men's Apparel")
+   - **Slug** — URL-friendly auto-generated from name; **permanent** once saved
+   - **Parent** — pick another category to nest under (or leave blank for root)
+   - **Description** (optional)
+   - **Image** + alt text (optional — used for category landing pages)
+   - **Display order** — numeric, lower numbers appear first
+   - **VAT rate** (optional) — percentage override for products in this category
+   - **Active** — toggle to hide without deleting
+3. Click **Create**
+
+The slug is **immutable** after creation. Pick carefully — it's part of every URL for products in this category.
+
+---
+
+## Category Tree
+
+Categories nest:
+
+```
+Apparel
+├── Men's
+│   ├── Shirts
+│   ├── Pants
+│   └── Accessories
+├── Women's
+│   ├── Tops
+│   └── Dresses
+└── Kids
+
+Electronics
+├── Phones
+├── Laptops
+└── Accessories
+
+Home
+└── Kitchen
+```
+
+A product can belong to **one category** at a time (use tags for cross-cutting groupings).
+
+The tree depth has no hard limit but 3 levels is the sweet spot — deeper makes navigation slow and mobile menus painful.
+
+---
+
+## Slug-Based References
+
+Products reference categories by **slug string**, not by ObjectID. So:
+
+```
+product.categorySlug = "mens-shirts"
+```
+
+This is denormalized for query speed — listing all products in a category is a single index lookup. The downside: renaming a slug would orphan products.
+
+**The system prevents slug changes** for this reason. If you really need to rename:
+
+1. Create a new category with the desired slug
+2. Migrate products: bulk-update `categorySlug` from old to new
+3. Archive the old category
+
+---
+
+## Parent Category Changes
+
+Unlike slug, you CAN change the **parent** of a category. The slug stays the same; the position in the tree shifts.
+
+```
+Old: Apparel > Men's > Shirts
+New: Apparel > Men's > Tops > Shirts   (added a level)
+```
+
+Products in "Shirts" still find their category by slug — the move is transparent.
+
+---
+
+## VAT Rate Overrides
+
+By default, products use the **platform-wide VAT rate** (set in [Platform Config > VAT](/commerce-bd/docs/platform/vat-setup)). If a category should use a different rate:
+
+1. Open the category → **Settings** tab
+2. Set **VAT rate** to the override (e.g. `7.5` for 7.5%)
+3. Save
+
+Now every product in this category posts with the override rate at sale time. Use for:
+
+- **Books** (typically 0% in Bangladesh)
+- **Essential food items** (often reduced rate)
+- **Imported luxury goods** (often higher rate)
+
+If a product should override the category's rate too, set it on the product itself (overrides cascade: product > category > platform).
+
+---
+
+## Active vs Inactive
+
+Toggle `active` off to hide a category from:
+
+- The storefront category navigation
+- The POS browse view
+- Bulk product picker dropdowns
+
+Products in the inactive category are unaffected — they remain visible if filtered by other criteria. The category is just hidden as a navigation aid.
+
+To **re-enable**, toggle back on. No data loss.
+
+---
+
+## Product Count
+
+Each category shows a **productCount** — auto-maintained as products are added/moved/deleted. Use this for:
+
+- Identifying empty categories (candidates for archive)
+- Spotting taxonomy bloat (a category with 1000 products needs subcategories)
+- Reports
+
+If counts look stale (e.g. you bulk-deleted products and the count didn't drop), use the **Sync Product Count** action — it walks every product and recomputes counts atomically.
+
+---
+
+## Display Order
+
+The category list is sorted by `displayOrder` ascending, then alphabetically. Use to control:
+
+- Which category appears first in the storefront menu
+- Order in admin pickers
+
+Convention: increment by 10 (10, 20, 30...) so you can insert new categories without renumbering everything.
+
+---
+
+## Don't Delete Active Categories
+
+Hard-deleting a category that has products **fails** by default — would orphan the products' `categorySlug` reference. Either:
+
+1. **Move products** to a different category first, then delete
+2. Or **archive** the category (toggle `active` off) — preserves history
+
+Hard delete is admin-only and uncommon.
+
+---
+
+## Common Pitfalls
+
+| Symptom | Cause + fix |
+|---------|-------------|
+| Slug rejected on save | A category with that slug already exists. Pick a different name (or leave blank to auto-generate a unique one). |
+| Product missing from category page | Either the product is `draft`/`archived`, or its `categorySlug` doesn't match. Check both. |
+| Subcategory not appearing under parent | Parent slug typo or parent is inactive. Check the parent picker. |
+| VAT rate change didn't apply to historical orders | Correct — VAT rate at sale time is locked. Override only affects new orders. |
+
+---
+
+## What's next?
+
+- [Variants & SKUs](/commerce-bd/docs/products/variants-and-skus) — variant-level pricing and stock
+- [Size Guides](/commerce-bd/docs/products/size-guides) — measurement charts per category
+- [VAT Setup](/commerce-bd/docs/platform/vat-setup) — how the platform-wide rate works

@@ -1,0 +1,51 @@
+# SME / TOT basics
+
+Your annual turnover is between **BDT 50 lakh and BDT 3 crore**, so NBR
+classifies you as an SME operating under the **Turnover Tax (TOT)** regime.
+
+## What TOT means
+
+- You pay a **flat 4%** of your taxable turnover every month.
+- That's it. No charging customers 15% VAT, no reclaiming input VAT,
+  no per-line rate calculations.
+- You file **Mushak 9.2** (not 9.1), due the 15th of the following month.
+
+## What the system does automatically
+
+1. **POS / sales**: system posts revenue + TOT 4% to `2132.TOT4.COLLECTED`.
+   You never see VAT lines on receipts — just the gross sale.
+2. **Purchases**: whatever VAT your supplier charged is **folded into
+   inventory cost** — because you can't claim it back. Your cost goes up
+   by that amount. This is correct NBR behavior for TOT regime.
+3. **Monthly return**: open `/dashboard/accounting/tot-return`, pick the
+   month, click Export CSV — hand it to your NBR filing agent.
+
+## What's different from standard VAT
+
+| | Standard VAT | TOT (SME) |
+|---|---|---|
+| Charge customer | 15% on top | Nothing extra |
+| Claim input VAT | Yes | No |
+| Filing form | Mushak 9.1 | Mushak 9.2 |
+| Exempt items | Shown separately | Excluded from TOT base |
+
+## Common questions
+
+**Can I issue Mushak 6.3 invoices?**
+No — TOT registrants don't issue 6.3. Your POS receipts and regular
+invoices are sufficient.
+
+**What if I sell exempt items (rice, vegetables)?**
+Mark them as EXEMPT_STAPLE / EXEMPT_VEGETABLE in the product tax class.
+The system excludes exempt turnover from the 4% TOT base automatically.
+
+**I crossed BDT 3 crore — what now?**
+You have to migrate to STANDARD_VAT this month. Go to Platform Settings →
+Branches → Edit branch → change Business Type to STANDARD_VAT. The next
+monthly return will be 9.1. Speak to a CA first — there's usually some
+transition reconciliation.
+
+## Related
+
+- [Business types](business-types.md) — the decision tree
+- [VAT basics](vat-basics.md) — general framework

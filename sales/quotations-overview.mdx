@@ -1,0 +1,73 @@
+# Quotations Overview
+
+A **quotation** is a price offer you send to a customer before they commit. Think of it as a saved cart that the customer hasn't paid for yet — with a price, a validity window, and a paper trail.
+
+Use quotations for:
+
+- **B2B sales** where the buyer needs a written quote before approving the purchase
+- **Custom orders** where the price depends on quantity discounts, freight, or specific terms
+- **Tenders / RFQs** where you submit a formal price for a future order
+
+If a customer is buying something off-the-shelf at the listed price, skip quotations and create an order directly. Quotations are for the cases where there's a negotiation step.
+
+[Open Quotations](/dashboard/quotations)
+
+---
+
+## How a quotation moves through its life
+
+```
+Draft ──▶ Sent ──▶ Viewed ──▶ Accepted ──▶ Converted (becomes an order)
+                              │
+                              ├──▶ Rejected (customer declined)
+                              │
+                              └──▶ Expired (validity date passed)
+```
+
+| Status | What it means |
+|---|---|
+| **Draft** | You're still building it. Not visible to the customer. |
+| **Sent** | You marked it as sent. The customer received the link or PDF. |
+| **Viewed** | The customer opened it (manually marked or via email tracking). |
+| **Accepted** | The customer agreed to the price. Ready to convert. |
+| **Rejected** | The customer declined. Keep it for the audit trail; don't reuse. |
+| **Expired** | The validity date passed before the customer responded. |
+| **Converted** | An order was created from this quote. The quote is locked. |
+
+The status moves **forward only**. Once a quote is rejected or expired, you can't accept it — you have to clone it (a new draft with the same lines) and start over.
+
+---
+
+## What a quotation contains
+
+Every quote carries these blocks:
+
+- **Customer** — name, email, phone (snapshot, so later customer edits don't change the quote)
+- **Lines** — each one is a product, quantity, and unit price
+- **Totals** — subtotal, tax, shipping, discount, grand total
+- **Validity** — a date after which the quote auto-expires
+- **Notes** — free-form text the customer sees on the quote
+- **Internal notes** — staff-only commentary that doesn't appear on the quote
+- **Approvals** (optional) — for big-ticket quotes, route through internal sign-off before sending
+
+---
+
+## Quotation vs. Order — the difference
+
+| Quotation | Order |
+|---|---|
+| Doesn't reserve stock | Reserves stock at placement |
+| Doesn't trigger payment | Has a payment state (pending → paid) |
+| Has a validity window | Has a fulfillment lifecycle (ship, deliver) |
+| Customer can reject | Customer has already committed |
+| Becomes an order on accept + convert | Is the source of truth for fulfillment |
+
+A quote that's been **converted** has a back-reference to the order it produced. You can click through from the quote to the order it became.
+
+---
+
+## What's next?
+
+- [Create a Quotation](/dashboard/orders/learn/create-quotation) — step-by-step build
+- [Send & Track a Quotation](/dashboard/orders/learn/send-track-quotation) — the customer-facing flow
+- [Convert a Quote to an Order](/dashboard/orders/learn/convert-to-order) — the conversion path

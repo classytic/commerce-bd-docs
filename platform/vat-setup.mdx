@@ -1,0 +1,72 @@
+# VAT & BIN Setup
+
+Required if your business is registered with Bangladesh NBR. Configures VAT rates, BIN, and Mushak invoice numbering.
+
+---
+
+## Mark Yourself as VAT-Registered
+
+Go to **Settings > Platform Config > VAT** and toggle **VAT Registered** on.
+
+If you're NOT VAT-registered, leave this off — invoices will skip the VAT line and the Mushak fields, and you can run on simplified accounting.
+
+[Open Platform Config](/dashboard/platform-config)
+
+---
+
+## Enter Your BIN
+
+The **Business Identification Number (BIN)** is the 13-digit ID from NBR. Format: `123456789-0101`.
+
+Enter it in the **BIN** field. The system validates the format — wrong shape gets rejected.
+
+Your BIN appears on every Mushak 6.3 invoice and is required for VAT returns.
+
+---
+
+## Set the Default VAT Rate
+
+Most businesses use **15%** (the standard VAT rate). Some product categories qualify for reduced rates (5%, 7.5%, 10%) — set these per-product, not at the platform level.
+
+The default rate applies to any product that doesn't have its own override.
+
+---
+
+## Prices Include VAT?
+
+Two ways to display prices:
+
+- **Inclusive** (recommended for retail) — the price you set IS the customer pays. The system reverse-calculates the VAT for the invoice.
+- **Exclusive** (recommended for B2B) — the price you set is the base. VAT is added on top at checkout.
+
+Toggle **Prices Include VAT** based on your business model. Switching this **does not change** existing prices — only how new invoices break down the totals.
+
+---
+
+## Mushak Invoice Numbering
+
+Mushak 6.3 invoices need a sequential number with a configurable prefix.
+
+Set:
+
+- **Invoice Prefix**: e.g. `INV-` (appears before the year + sequence)
+- **Start Number**: usually `1` for new businesses, or your last NBR-filed number + 1 if you're migrating mid-year
+
+Generated format: `INV-2026-000001`. The system increments atomically — no duplicates even under load.
+
+---
+
+## Mushak 9.1 (Returns)
+
+Mushak filings happen monthly. The system can auto-generate a return draft on the 1st of each month — toggle **Auto-Generate Returns** in the same VAT panel.
+
+Generated returns appear in **Accounting > Mushak Returns** for review before submission.
+
+[View Mushak Returns](/dashboard/accounting/musok)
+
+---
+
+## What's next?
+
+- [Withholding Certificates](/dashboard/accounting/learn/withholding-certificates) — TDS / VDS issuance
+- [Mushak / VAT Basics](/dashboard/accounting/learn/vat-basics) — what gets posted where

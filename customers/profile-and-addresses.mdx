@@ -1,0 +1,109 @@
+---
+title: Customer Profile & Addresses
+description: Edit contact info, manage multiple delivery addresses, and link to a Better Auth account
+---
+
+# Profile & Addresses
+
+The customer profile holds **identity** + **delivery addresses** + **system links**. Most fields are editable inline.
+
+[Open Customers](/dashboard/customers)
+
+---
+
+## Editable Profile Fields
+
+| Field | Notes |
+|-------|-------|
+| **Name** | Required |
+| **Phone** | Bangladesh format `01XXXXXXXXX` — used for dedup |
+| **Email** | Optional but used for dedup if present |
+| **Gender** | Optional — used for segmentation |
+| **Date of birth** | Optional — drives birthday loyalty rules |
+| **Customer type** | `retail` / `wholesale` / `distributor` |
+| **Tags** | Free-form labels (e.g. `vip`, `corporate`, `walk-in`) |
+| **Notes** | Internal-only; never shown to the customer |
+
+Click **Edit** at the top right of the profile to open the side sheet, change values, save.
+
+---
+
+## Multiple Addresses
+
+A customer can have many delivery addresses. The first one added is the **default** — it's pre-selected at checkout unless overridden.
+
+### Add an address
+
+1. Customer profile → **Addresses** card → **+ Add Address**
+2. Fill in:
+   - **Recipient name + phone** — who receives the parcel
+   - **Street + city + division + postal code**
+   - **Provider area IDs** — Redx + Pathao area codes (auto-fill if available, else type the area name to search)
+3. Save
+
+### Set a different default
+
+1. Click any non-default address → **Set as Default**
+2. Old default loses the badge; new one becomes the checkout pre-select
+
+### Remove an address
+
+Click **Delete** on the address card. Past orders that shipped to it stay linked — only future use is removed.
+
+---
+
+## Provider Area IDs (Logistics)
+
+The **Redx area ID** and **Pathao area ID** fields wire your customer's address into the local courier networks. The system stores both so the right one is picked depending on which carrier you ship with.
+
+If you leave these blank, the system falls back to address-text matching at fulfillment time — slower and error-prone for hard-to-find areas. Always fill them in if the customer is going to be a repeat buyer.
+
+---
+
+## Link to a User Account
+
+If the customer signs up on the storefront with the same phone or email, Better Auth automatically:
+
+1. Creates a `user` record (with password)
+2. Looks up the matching customer by phone → email
+3. Sets `customer.userId = user.id` (the link)
+
+You don't trigger this manually. The signup flow handles it. After linking:
+
+- The customer can log in to view their order history, addresses, loyalty balance
+- Their POS purchases also count toward their online profile (one identity, all channels)
+
+If a customer has TWO records (one auto-created from POS, one from signup) and they share a phone/email, the system links them and merges history into the older record.
+
+---
+
+## Customer with No Phone (POS edge case)
+
+When you ring up a walk-in who doesn't want to share their phone:
+
+- The POS creates a customer with a placeholder ID (`pending_<userId>`)
+- Their order is captured + tied to this placeholder
+- If they later return AND share their phone, the placeholder reassigns to the real number, history follows
+
+You don't have to do anything special — just leave the phone field blank at the POS and the system handles the migration on next visit.
+
+---
+
+## Order History at a Glance
+
+The profile shows:
+
+- **Total orders** — count
+- **Lifetime revenue** — sum in BDT
+- **Last order date** — for re-engagement
+- **Average order value** — derived
+
+Click **View All Orders** at the bottom to filter the orders list by this customer.
+
+---
+
+## What's next?
+
+- [Credit & A/R Ledger](/commerce-bd/docs/customers/credit-and-ar-ledger) — turn this customer into a credit account
+- [Segmentation & Tags](/commerce-bd/docs/customers/segmentation) — group customers for campaigns
+- [Loyalty Members](/commerce-bd/docs/loyalty/members) — enroll in the loyalty program

@@ -1,0 +1,178 @@
+---
+title: Taking Sales
+description: Build a cart, take payment, apply discounts, redeem loyalty, refund — the cashier's main workflow
+---
+
+# Taking Sales
+
+This is what the cashier does 95% of the time. Learn this flow cold.
+
+---
+
+## The Five-Step Sale
+
+```
+1. Find product   →  search, scan, or pick from category
+2. Add to cart    →  click product card (auto-adds simple, prompts variant if needed)
+3. Adjust         →  change quantity, apply discount, look up customer
+4. Checkout       →  pick payment method, enter amount, complete
+5. Receipt        →  print or email
+```
+
+Press **F2** after the receipt to start a new sale.
+
+---
+
+## Finding Products
+
+Three ways:
+
+**Scan** — point the barcode scanner at the item. The system auto-finds the product (and the right variant if the barcode is variant-specific) and adds it to the cart. Fastest path.
+
+**Search** — type any of: product name, SKU, partial name, partial SKU. The catalog matches in real time. Use for items without barcodes.
+
+**Browse** — pick a category from the left panel, then scroll the product grid. Use for new staff still learning the catalog or for browsing-style stores.
+
+The catalog is **branch-aware** — only products with stock at the active branch appear (you can toggle "Show all" if you need to look up an out-of-stock item, e.g. for a transfer request).
+
+---
+
+## Variants
+
+When a product has variants (size, color, etc.), tapping it opens the **variant picker**:
+
+- Pick the size
+- Pick the color
+- Confirm — the specific variant goes to the cart
+
+Variants with zero stock at this branch appear greyed out unless "Show out of stock" is on. The cashier can still pick them — useful for special orders that get fulfilled later.
+
+---
+
+## The Cart
+
+The cart shows everything the customer is buying. For each line:
+
+- **Quantity** — `+` and `-` buttons to adjust, or click the number to type
+- **Unit price** — read-only (changing prices requires manager auth)
+- **Line total** — qty × unit price
+- **Remove** — trash icon
+
+Top of the cart:
+- **Customer** field — search by name/phone or scan a loyalty card
+- **Voucher / promo code** field
+- **Discount** button — opens manager-auth dialog for arbitrary discounts
+
+Bottom of the cart:
+- Subtotal
+- Discounts (auto-applied promotions, manual discounts, loyalty redemptions)
+- VAT (if applicable)
+- **Total** — what the customer pays
+
+---
+
+## Applying a Discount
+
+Three discount paths:
+
+**Auto-promotion** — if a [promotion program](/commerce-bd/docs/promotions/programs) matches the cart (e.g. "Eid 10% off"), the discount applies automatically. The cart shows it as a separate line with the program name.
+
+**Voucher code** — type or scan a code into the **Promo** field, hit Enter. The system validates the code (active? within expiry? remaining uses?) and applies the discount, OR shows an error.
+
+**Manual discount** — for one-off goodwill or negotiated discounts. Click **Discount**, enter a manager PIN if the amount exceeds the cashier's limit, type the discount amount or percentage, save. This is logged with the manager's user ID.
+
+Discounts **stack only if the program allows it** — see [Promotions stacking modes](/commerce-bd/docs/promotions/programs).
+
+---
+
+## Loyalty (If Customer Is a Member)
+
+If you've selected a customer who has loyalty:
+
+1. Their **current balance** appears in the cart
+2. The system shows **max redeemable** for this cart (capped at e.g. 50% of subtotal — see [Redemption](/commerce-bd/docs/loyalty/redemption))
+3. Click **Redeem** → enter how many points to use → confirm
+4. The discount lands on the cart, points are **reserved** (not yet consumed)
+
+If the customer changes their mind before paying, just remove the redemption — points return to balance immediately.
+
+After payment, points are **confirmed** (officially redeemed) and the customer also **earns** new points based on the order amount per your [earning rules](/commerce-bd/docs/loyalty/earning-rules).
+
+---
+
+## Checkout — Payment
+
+Click **Checkout** to leave the cart and enter payment.
+
+Payment screen shows:
+- **Total due**
+- **Payment methods** (cash, bKash, Nagad, Rocket, Card, etc.) — only the methods you've enabled in [Platform Config](/commerce-bd/docs/platform/payment-methods) appear
+
+Pick a method:
+
+**Cash** — enter the amount tendered. The screen shows **change** = tendered − total. Hand over change.
+
+**Mobile money (bKash/Nagad/Rocket)** — enter the wallet TXN ID confirming the customer's payment. The system stores the reference for reconciliation.
+
+**Card** — enter the bank slip number / approval code from your card terminal.
+
+### Split payments
+
+Customer wants to pay BDT 5,000 cash + BDT 3,000 bKash? Use **Split**:
+
+1. Click **Split**
+2. Add a payment line for cash, amount 5000
+3. Add another line for bKash, amount 3000 + TXN ID
+4. Confirm — both are stored on the order
+
+The order has a **payment array** with each line. Total of all lines must equal the order total.
+
+---
+
+## Confirming the Sale
+
+After payment, the system:
+
+1. Creates a **real order** (decrements stock, applies promotions, fires events)
+2. **Confirms** any reserved loyalty redemption
+3. Triggers earning rules → adds new points to the customer's balance
+4. Posts to the GL (revenue, VAT, COGS, cash) — happens asynchronously
+5. Shows the **Receipt screen**
+
+The receipt has: invoice number, date/time, items + qty + price, discounts, VAT, total, payment breakdown, customer name (if any), loyalty earnings/balance.
+
+Click **Print** for a paper copy, **Email** to send digital, or **Skip** to move on.
+
+Press **F2** to start the next sale.
+
+---
+
+## Refunds
+
+To refund a previous sale:
+
+1. **F9** — open the Order History drawer
+2. Find the order (search by date, customer name, invoice number)
+3. Click the order → **Refund**
+4. Pick:
+   - **Full refund** — refunds everything (all items, all discounts, all loyalty)
+   - **Partial refund** — pick which items + quantities
+5. Pick the **refund method** (back to original payment method, or convert to store credit)
+6. Confirm
+
+The system:
+- Posts a **refund order** linked to the original
+- **Restocks** the returned items
+- **Reverses** the loyalty earnings (and credits back any redeemed points)
+- Posts to GL (negative revenue, COGS reversal, cash out)
+
+The original order is now marked `partially-refunded` or `fully-refunded`.
+
+---
+
+## What's next?
+
+- [Closing Shift & Reports](/commerce-bd/docs/pos/closing-shift-and-reports) — at end-of-day
+- [Troubleshooting](/commerce-bd/docs/pos/troubleshooting) — common cashier issues
+- [Promotions](/commerce-bd/docs/promotions/programs) — design the campaigns that auto-apply at the cart
+- [Loyalty Redemption](/commerce-bd/docs/loyalty/redemption) — how points convert to discounts

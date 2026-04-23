@@ -1,0 +1,172 @@
+---
+title: Cycle Counting & Audit
+description: Run periodic stock-takes — full / cycle / spot counts, freeze stock, reconcile variance, post adjustments to GL
+---
+
+# Cycle Counting & Audit
+
+A **stock audit** physically counts what's actually in your warehouse and reconciles it against system stock. The system supports three audit types and posts variance adjustments to the GL automatically.
+
+[Open Audit](/dashboard/warehouse/audit)
+
+---
+
+## Three Count Types
+
+| Type | What it covers | When to use |
+|------|----------------|-------------|
+| **Full** | Every SKU at every location | Year-end, pre-IPO audit, post-major-event |
+| **Cycle** | A subset (specific locations / categories / SKUs) | Monthly rotation — count 1/12 of inventory each month |
+| **Spot** | One or a few SKUs | Investigate a specific variance or shrinkage report |
+
+Cycle counts are the **right default** for most businesses. Full counts are disruptive (often require closing the shop); spot counts are reactive.
+
+---
+
+## Anatomy of an Audit Session
+
+| Field | Meaning |
+|-------|---------|
+| **Count type** | full / cycle / spot |
+| **Scope** | nodeId (warehouse), locationId, skuRefs (which SKUs to include) |
+| **Freeze policy** | `hard` (block all moves), `soft` (warn but allow), `none` (no freeze — risky) |
+| **Status** | `planned` → `counting` → `reconciling` → `closed` |
+| **Lines** | One per (SKU, location) — counted qty + variance reason |
+| **Created by / closed by** | Audit trail |
+
+---
+
+## Step 1 — Plan the Audit
+
+1. **Warehouse > Audit** → **New Audit**
+2. Pick:
+   - **Count type** (full / cycle / spot)
+   - **Scope** — which warehouse + locations + SKUs (leave blank = all)
+   - **Freeze policy** — `hard` for accuracy, `soft` for low disruption
+3. Save as `planned`
+
+This pre-creates the line items (one row per SKU+location in scope) but doesn't freeze anything yet.
+
+---
+
+## Step 2 — Start Counting
+
+Click **Start** on the audit. The status moves to `counting`. Depending on freeze policy:
+
+- **hard** — all stock moves on these SKU+locations are blocked. Sales, transfers, adjustments fail with "audit in progress" until the audit closes.
+- **soft** — moves are allowed but logged with a warning. Useful when you can't shut down operations.
+- **none** — no freeze. Variance will include any moves that happened during the count. Avoid unless you really know what you're doing.
+
+Hand the count sheet (or a scanner-loaded device) to the warehouse staff. They walk the locations, count physical units, record the number.
+
+---
+
+## Step 3 — Submit Lines
+
+For each SKU+location, record:
+
+```
+POST /audits/:id/lines {
+  skuRef: 'TSHIRT-RED-M',
+  locationId: 'loc_main_a3',
+  countedQuantity: 47,
+  varianceReason: 'damaged in shelf',  // optional
+  lotId: 'lot_20260115',  // if lot-tracked
+}
+```
+
+Or use the dashboard line entry — same fields.
+
+The system computes variance per line:
+
+```
+variance = countedQuantity − systemQuantity
+```
+
+- Positive variance → more on shelf than system thought (over)
+- Negative → less on shelf (short — possible shrinkage)
+- Zero → perfect
+
+---
+
+## Step 4 — Reconcile
+
+Once all lines are counted, click **Reconcile**. The status moves to `reconciling`. The system shows:
+
+- Total lines counted
+- Lines with variance ≠ 0
+- Sum of variance × cost (the financial impact)
+- Auto-approve threshold (configurable per audit, e.g. 2 units)
+
+Decide what to do:
+
+- **Auto-approve small variances** — variances ≤ threshold post adjustment moves automatically
+- **Manual review for large variances** — investigate before posting
+
+For each line in manual review, you can:
+
+- **Approve** — post the adjustment as-is
+- **Edit** — correct the counted quantity (e.g. miscount discovered)
+- **Reject** — set count back to system value (e.g. count was wrong, system was right)
+
+Click **Confirm Reconciliation** when done. The audit moves to `closed`.
+
+---
+
+## What Posts to GL
+
+For each approved variance line, the system creates an **adjustment move**:
+
+```
+DR  Inventory account     OR    DR  Inventory Variance
+CR  Inventory Variance          CR  Inventory account
+```
+
+Direction depends on sign:
+- Positive variance (over) → credits Variance, debits Inventory (Inventory goes UP)
+- Negative variance (short) → debits Variance, credits Inventory (Inventory goes DOWN)
+
+The variance account reflects on the P&L as a one-time gain/loss. Significant losses warrant investigation (theft? recording errors? damaged goods?).
+
+---
+
+## Freeze Policy — Choosing Right
+
+| Policy | Pro | Con | Best for |
+|--------|-----|-----|----------|
+| **hard** | Most accurate count (no movements during count) | Disrupts operations — no sales, no transfers | Full audits, year-end |
+| **soft** | Operations continue | Variance includes mid-count movements | Cycle counts during business hours |
+| **none** | No friction at all | Variance is unreliable | Spot checks where you only care about gross numbers |
+
+For high-value SKUs, always `hard` — even brief intermissions to count 100 expensive items are worth the certainty.
+
+---
+
+## Common Patterns
+
+**Monthly rotation cycle counting** — schedule 12 cycle audits, one per month, each covering 1/12 of SKUs (rotated by category or location). Over a year, every SKU gets counted at least once.
+
+**ABC analysis** — count high-value SKUs (A) every month, mid-value (B) quarterly, low-value (C) annually. Spend audit budget where it matters.
+
+**Pre/post-event audit** — count before a sale event, count after. Net difference + sales = expected; anything else is shrinkage.
+
+**Spot-check on shrinkage report** — your reports flag a specific SKU as having dropped faster than sales explain. Run a spot audit on that SKU at all locations to confirm.
+
+---
+
+## Common Pitfalls
+
+| Symptom | Cause + fix |
+|---------|-------------|
+| Variance huge across the board | Probably a calibration issue — units of measure (e.g. counting in cases vs each), wrong location scope. Re-count a sample to verify. |
+| Variance changes after reconciliation | Something else moved stock after you submitted lines. Use `hard` freeze next time. |
+| Cycle count freeze blocks legitimate sales | Use `soft` freeze, or split the audit into smaller scopes that finish faster |
+| Shrinkage trend keeps appearing in same location | Investigate the location — possible theft, damage, wrong-bin storage. Camera + access log review. |
+
+---
+
+## What's next?
+
+- [Lots & Traceability](/commerce-bd/docs/warehouse-advanced/lots-and-traceability) — count lots + serials with full provenance
+- [Cost & Valuation](/commerce-bd/docs/warehouse-advanced/cost-and-valuation) — how variance valuation is computed
+- [Daily Stock Management](/commerce-bd/docs/inventory/daily-stock) — the regular non-audit stock workflow

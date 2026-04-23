@@ -1,0 +1,90 @@
+# Purchases & Receiving
+
+How to order stock from suppliers and receive it into your warehouse.
+
+> **What is a Purchase?** It's the **operational** vendor doc — items, quantities, where stock lands, receipt status. It is **not** the financial document. Once you receive it, the system emits an `accounting:purchase.paid` outbox event that posts a [Vendor Bill in accounting](/commerce-bd/docs/suppliers/ap-ledger) for the A/P side.
+>
+> For the auto-replenishment route (rule fires → ProcurementOrder), see [Procurement](/dashboard/inventory/learn/procurement).
+
+---
+
+## Create a Purchase
+
+1. Go to **Inventory > Purchases**
+2. Click **New Purchase**
+3. Select a **supplier**
+4. Add products: SKU, quantity, unit cost. Optional per-line: `discount`, `taxRate`, `notes`, `destinationLocationId`
+5. Click **Create**
+
+The purchase starts in **Draft** status.
+
+```http
+POST /api/v1/inventory/purchase-orders
+{
+  "supplierId": "...",
+  "paymentTerms": "cash",
+  "items": [
+    { "productId": "...", "variantSku": "TSHIRT-RED-M",
+      "quantity": 10, "costPrice": 250,
+      "destinationLocationId": "<loc _id, optional>" }
+  ]
+}
+```
+
+[Go to Purchases](/dashboard/inventory/purchase-orders)
+
+---
+
+## Receive Goods
+
+When the supplier delivers, post the receipt:
+
+```http
+POST /api/v1/inventory/purchase-orders/:id/action
+{ "action": "receive" }
+```
+
+This is **all-or-nothing** — every line on the purchase posts in one shot. Calling `receive` a second time returns 4xx with stock unchanged.
+
+What happens:
+
+- Receipt move group created (`vendor` → `stock` for each line)
+- Stock quantities update via the Flow engine
+- `accounting:purchase.paid` emitted via the outbox (committed in the same Mongo session as the receipt — at-least-once delivery)
+- POS cache invalidated
+
+### Per-line destination location
+
+Omit `destinationLocationId` and the receipt lands in the branch's default `stock` bin. Supply a sub-location `_id` (storage type, active) to route a line into a specific aisle / bin. Virtual locations (`vendor`, `customer`, `adjustment`) are rejected with 4xx.
+
+---
+
+## Pay the Supplier
+
+```http
+POST /api/v1/inventory/purchase-orders/:id/action
+{ "action": "pay",
+  "amount": 2500, "method": "bank_transfer",
+  "reference": "TXN-20260423-001" }
+```
+
+Partial payments accumulate in paisa-integer math (no float drift). The bill flips to `paid` deterministically on the final paisa. Payment method is one of `cash` | `bkash` | `nagad` | `rocket` | `bank_transfer`.
+
+---
+
+## Cancel
+
+```http
+POST /api/v1/inventory/purchase-orders/:id/action
+{ "action": "cancel", "reason": "Vendor backed out" }
+```
+
+Cancelled purchases stay in the list for audit. Cannot be edited or re-received.
+
+---
+
+## What's next?
+
+- [Procurement](/dashboard/inventory/learn/procurement) — the auto-replenishment / ProcurementOrder route
+- [Branch Transfers](/dashboard/inventory/learn/transfers) — moving stock between stores
+- [Lots, Serials & Packages](/dashboard/inventory/learn/lots-packages) — batch and serial tracking

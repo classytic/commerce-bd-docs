@@ -1,0 +1,89 @@
+# Invoicing
+
+Create invoices, bills, receipts, and quotes — automatically or by hand.
+
+---
+
+## How invoicing fits in
+
+Invoicing sits between your sales/purchases and the accounting ledger. When you post an invoice, the system automatically creates the journal entry in the ledger. You never need to touch the ledger manually for invoices.
+
+```
+Sale / Purchase / POS
+      |
+   Invoice (draft -> posted)
+      |
+   Journal Entry (auto-created)
+      |
+   Reports (aging, trial balance, P&L)
+```
+
+---
+
+## Types of documents
+
+| Type | When to use | Number format |
+|------|-------------|---------------|
+| **Invoice** | You sell to a customer on credit | INV-2026-00001 |
+| **Bill** | You buy from a supplier | BILL-2026-00001 |
+| **Credit Note** | Customer returns goods or you give a discount | CN-2026-0001 |
+| **Receipt** | POS cash/card sale (no credit) | RCT-2026-0001 |
+| **Quote** | Send a price estimate before selling | INV-2026-00001 (after convert) |
+
+---
+
+## Creating an invoice
+
+1. Go to **Invoices** and click **New Invoice**
+2. Select the **customer** and choose a **currency**
+3. Add line items — product, quantity, price
+4. Optionally set a **due date** or pick a **payment term** (e.g. Net 30)
+5. Click **Post** to finalize
+
+> Once posted, the invoice gets a number and a journal entry is created automatically. You cannot edit a posted invoice — use Credit Note to make corrections.
+
+[Open Invoices](/dashboard/accounting/invoices)
+
+---
+
+## Recording a payment
+
+1. Open the posted invoice
+2. Click **Record Payment** in the actions menu
+3. Enter the amount, method (cash, bKash, bank transfer), and reference
+4. The system updates the balance — partial payments are supported
+
+When fully paid, the status changes to **Paid** and the paid date is recorded.
+
+---
+
+## Credit notes
+
+If a customer returns goods or you need to adjust an invoice:
+
+1. Open the posted invoice
+2. Click **Credit Note** in the actions menu
+3. Choose **Full** (entire invoice) or **Partial** (specific lines/amounts)
+4. The credit note is created as a draft — post it to finalize
+
+Credit notes are linked to the original invoice for audit trail.
+
+---
+
+## Quotes (estimates)
+
+Quotes let you send a price estimate before creating an invoice:
+
+1. Click **New Quote** on the invoices page
+2. Fill in customer, lines, expiry date
+3. Click **Send** to mark it sent
+4. When the customer agrees, click **Accept** then **Convert to Invoice**
+5. The quote becomes a draft invoice ready to post
+
+---
+
+## What's next?
+
+- [Auto-Invoicing](/dashboard/accounting/learn/auto-invoicing) — automatic invoice creation from orders and POS
+- [Recurring & Reminders](/dashboard/accounting/learn/recurring-reminders) — subscription billing and payment reminders
+- [Reports & Analysis](/dashboard/accounting/learn/reports) — aging, overdue, and financial reports

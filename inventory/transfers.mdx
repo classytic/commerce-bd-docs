@@ -1,0 +1,113 @@
+# Branch Transfers
+
+Move stock between branches. Cross-branch ops use **dual Flow contexts** — sender decrement + receiver increment in separate scopes.
+
+---
+
+## Lifecycle
+
+**draft** → **approved** → **dispatched** → (optional **in_transit**) → **received** | **partial_received** | **cancelled**
+
+---
+
+## Create
+
+You must be logged into the **sending branch**.
+
+```http
+POST /api/v1/inventory/transfers
+{
+  "receiverBranchId": "<dest org _id>",
+  "documentType": "delivery_note",
+  "items": [
+    { "productId": "...", "variantSku": "TSHIRT-RED-M",
+      "quantity": 5,
+      "sourceLocationId": "<sender bin _id, optional>",
+      "destinationLocationId": "<receiver bin _id, optional>" }
+  ]
+}
+```
+
+`senderBranchId` defaults to the active org. `documentType` is one of `delivery_note` | `dispatch_note` | `delivery_slip`.
+
+[Go to Transfers](/dashboard/inventory/transfers)
+
+---
+
+## Per-line location overrides
+
+`sourceLocationId` (sender scope) and `destinationLocationId` (receiver scope) are independent. Defaults: sender's `stock` bin → receiver's `stock` bin.
+
+- The dispatch move resolves `sourceLocationId` in the **sender** scope.
+- The receive move resolves `destinationLocationId` in the **receiver** scope.
+- The receive call can override the destination per line (see below) — this wins over the value supplied at create.
+
+---
+
+## Approve & Dispatch
+
+```http
+POST /api/v1/inventory/transfers/:id/action
+{ "action": "approve" }
+
+POST /api/v1/inventory/transfers/:id/action
+{ "action": "dispatch", "transport": { "carrier": "internal" } }
+```
+
+`transport` is optional. After dispatch, sender's stock decrements (`stock` → `customer` virtual location in sender scope, with reverse mirror in receiver scope as inbound goods).
+
+---
+
+## Receive
+
+Switch to the **receiving branch**, then:
+
+```http
+POST /api/v1/inventory/transfers/:id/action
+{ "action": "receive" }
+```
+
+Omitting `items[]` means "receive everything in the dispatch as-is". Pass `items[]` to override per line on receive — useful for routing into a specific bin or accepting a partial receipt:
+
+```http
+POST /api/v1/inventory/transfers/:id/action
+{
+  "action": "receive",
+  "items": [
+    { "itemId": "<line _id>",
+      "productId": "...",
+      "variantSku": "TSHIRT-RED-M",
+      "quantityReceived": 5,
+      "destinationLocationId": "<receiver sub-location _id>" }
+  ]
+}
+```
+
+Receiving the full quantity flips status to `received`; less flips to `partial_received`.
+
+---
+
+## Cancel
+
+```http
+POST /api/v1/inventory/transfers/:id/action
+{ "action": "cancel", "reason": "Wrong branch selected" }
+```
+
+Same-branch transfers (sender == receiver) are rejected at the gateway.
+
+---
+
+## Stock Requests
+
+Sub-branches can pull stock from head office. Create a request, head office reviews and fulfills via a transfer.
+
+[Go to Stock Requests](/dashboard/inventory/requests)
+
+---
+
+## What's next?
+
+- [Procurement](/dashboard/inventory/learn/procurement) — auto-replenishment can fire transfers between branches
+- [Lots, Serials & Packages](/dashboard/inventory/learn/lots-packages) — tracking batches and containers
+- [Daily Stock Management](/dashboard/inventory/learn/daily-stock) — adjustments and alerts

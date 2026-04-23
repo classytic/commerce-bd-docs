@@ -1,0 +1,202 @@
+---
+title: Shift Policies
+description: Per-branch rules that govern how cashiers open, run, and close shifts — floats, variance thresholds, blind close, handover
+---
+
+# Shift Policies
+
+Not every store runs its register the same way. A flagship store may enforce a ৳1,000 opening float, blind close with manager reconcile, and require reason codes on every cash movement. A pop-up kiosk may need none of that. Shift Policy is the setting layer that decides.
+
+Policies cascade: **platform default → branch override → shift snapshot**. The shift itself carries a frozen copy of the policy at open time, so later policy changes don't retroactively affect the open shift.
+
+---
+
+## Where to configure
+
+**Platform defaults** — applies to every branch unless overridden:
+**Platform Settings → POS → Default Shift Policy**
+
+**Per-branch overrides** — settings that differ for one store:
+**Branches → {branch} → POS Policy**
+
+Only fields the branch explicitly sets override the platform default. Unset fields inherit.
+
+---
+
+## The settings
+
+### Opening
+
+| Field | Default | What it does |
+|---|---|---|
+| `requiredOpeningFloat` | `null` | `null` = cashier types any amount. Number (e.g. `1000`) = shift rejects any other opening cash value. Use this to standardize drawers across a chain. |
+| `enforceBusinessHours` | `false` | When `true`, a shift open outside branch operating hours is rejected at the API layer. Useful for stopping accidental early-morning opens. |
+
+### Closing
+
+| Field | Default | What it does |
+|---|---|---|
+| `blindCloseRequired` | `false` | When `true`, the cashier doesn't see expected cash before entering the count. Prevents "back into the number." Lightspeed pattern. |
+| `varianceThresholdAbs` | `100` BDT | Variance within this absolute amount is auto-accepted. |
+| `varianceThresholdPct` | `0.5` % | Variance within this percentage of expected cash is auto-accepted. Abs OR pct — the cashier passes if within either. |
+| `managerOverrideRequired` | `true` | When variance is outside both thresholds, a manager must enter their credentials before close can proceed. |
+
+### Automation
+
+| Field | Default | What it does |
+|---|---|---|
+| `autoCloseEnabled` | `false` | When `true`, a cron auto-closes any shift still open past `autoCloseTime`. The close uses counts = expected (zero variance by definition) and flags the shift `orphaned_closed` for manager review the next morning. |
+| `autoCloseTime` | `null` | HH:mm in branch TZ (e.g. `02:00` for 2am auto-close). |
+| `autoCloseTimezone` | `Asia/Dhaka` | IANA TZ name. Drives the business-date boundary. |
+
+### Handover (multi-cashier)
+
+| Field | Default | What it does |
+|---|---|---|
+| `allowHandover` | `true` | When `true`, a shift can transition to `paused` for a break / shift change without fully closing. New cashier resumes on return. |
+
+### Cash movements
+
+| Field | Default | What it does |
+|---|---|---|
+| `requireReasonCode` | `true` | Cash in / out during a shift must carry a reason from the allowed list. |
+| `allowedReasonCodes` | all 7 | Subset of `safe_drop, petty_cash, owner_withdrawal, correction, bank_deposit, till_top_up, other`. Restrict as needed. |
+
+### Payments
+
+| Field | Default | What it does |
+|---|---|---|
+| `allowedPaymentMethods` | all | Restrict which tender methods the POS offers. If your branch doesn't take Rocket, drop it here and the UI won't show it. |
+
+---
+
+## The snapshot — why it exists
+
+When a shift opens, the system copies the current policy into `shift.policySnapshot`. This is a frozen record — even if you change the platform default mid-shift, the running shift behaves by its snapshot.
+
+Why:
+- **Audit consistency** — the policy that actually governed the shift is retrievable later, even after someone edits the live policy
+- **Partial rollouts** — you can change the default to `blindCloseRequired: true` at 8am and running 6am shifts won't flip behavior mid-way
+- **Historical reports** — Z-reports include the snapshot so you can filter "shifts that ran under the old variance threshold"
+
+---
+
+## How policies combine — worked example
+
+Platform default:
+```
+requiredOpeningFloat: null
+blindCloseRequired: false
+varianceThresholdAbs: 100
+managerOverrideRequired: true
+```
+
+Branch **Dhanmondi** override:
+```
+requiredOpeningFloat: 1500
+blindCloseRequired: true
+```
+
+Resolved shift policy at Dhanmondi:
+```
+requiredOpeningFloat: 1500          ← branch override
+blindCloseRequired: true            ← branch override
+varianceThresholdAbs: 100           ← platform default (branch didn't override)
+managerOverrideRequired: true       ← platform default
+```
+
+All other branches with no override still use `requiredOpeningFloat: null` (cashier picks) and non-blind close.
+
+---
+
+## Behavior reference
+
+### Cashier tries to open with wrong float
+
+Policy: `requiredOpeningFloat: 1000`
+Cashier enters `1200`
+**Result**: API returns `400 INVALID_OPENING_FLOAT`, message "Opening cash must be BDT 1,000." UI blocks submission.
+
+### Blind close flow
+
+Policy: `blindCloseRequired: true`
+**Cashier sees**:
+- No "expected cash" field
+- Only "count the drawer" input
+- Submit
+- Shift transitions `open → blind_closed` (not `closed` yet)
+
+**Manager later**:
+- Opens Reports → Open Shifts → finds the `blind_closed` shift
+- Reviews opening, sales, movements
+- Enters their count (the reconcile count), adds notes, confirms
+- Shift transitions `blind_closed → closed`
+
+### Variance over threshold, manager override required
+
+Policy: `varianceThresholdAbs: 100`, `managerOverrideRequired: true`
+Expected: ৳25,000. Actual: ৳24,400. Variance: ৳-600.
+
+**Cashier**:
+- Enters 24,400
+- Submit
+- API returns `403 MANAGER_OVERRIDE_REQUIRED`
+- UI shows inline "Manager required" prompt with reason textarea
+- Manager enters credentials + reason ("wrong change given on order #PO-4312")
+- Resubmit succeeds, Z-report records the override
+
+### Auto-close fires
+
+Policy: `autoCloseEnabled: true`, `autoCloseTime: "23:59"`, `allowHandover: false`
+Shift still open at 23:59.
+
+**Cron**:
+- Sets `closingCash = expectedCash` (zero variance by definition)
+- Marks shift `orphaned_closed`
+- Fires notification to branch manager
+- Next-morning report flags it "auto-closed; needs review"
+
+---
+
+## Which policy do I want?
+
+### High-volume retail chain (multiple stores)
+- `requiredOpeningFloat: <chain standard>` — consistency
+- `blindCloseRequired: true` — fraud deterrent
+- `varianceThresholdAbs: 50` — tight
+- `managerOverrideRequired: true`
+- `autoCloseEnabled: true, autoCloseTime: "23:59"` — never leave shifts open
+- `requireReasonCode: true` — audit trail
+
+### Single-owner boutique
+- `requiredOpeningFloat: null` — flexible
+- `blindCloseRequired: false` — trust-based
+- `varianceThresholdAbs: 500` — lenient
+- `managerOverrideRequired: false` — owner reviews personally
+- `autoCloseEnabled: false` — owner closes manually
+
+### Pop-up kiosk / market stall
+- `requiredOpeningFloat: null`
+- `blindCloseRequired: false`
+- `varianceThresholdAbs: 200`
+- `allowHandover: false` — short shifts, no handover need
+- `allowedPaymentMethods: [cash, bkash]` — no card terminal
+
+---
+
+## Permissions
+
+| Action | Who |
+|---|---|
+| Edit platform default policy | `superadmin`, `admin` |
+| Edit branch-specific policy | `admin`, `branch_manager` (own branch only) |
+| Perform manager override at close | `admin`, `branch_manager`, or any role with `pos.manager-override` |
+| Review blind-closed shifts | `admin`, `branch_manager` |
+
+---
+
+## Related
+
+- [Opening a Shift](/pos/opening-shift) — how the policy shows up at open time
+- [Closing Shift & Reports](/pos/closing-shift-and-reports) — variance, blind close, manager override in practice
+- [Cash Movements](/pos/cash-movements) — mid-shift in / out governed by the reason-code policy

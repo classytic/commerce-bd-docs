@@ -1,0 +1,126 @@
+---
+title: Loyalty Referrals
+description: Two-sided refer-a-friend rewards — share codes, approve signups, prevent abuse
+---
+
+# Referrals
+
+Referrals reward both the **referrer** (existing member who shares the code) and the **referee** (new customer who signs up using it). Configurable defaults: 100 points to the referrer, 50 to the referee.
+
+[Open Referrals](/dashboard/loyalty/referrals)
+
+---
+
+## How it Flows
+
+```
+1. Member shares their referral code              (e.g. K7P2-N9X4)
+2. Friend signs up + uses the code at enrollment  (POST /loyalty/me/referral)
+3. System creates a Referral record               (status: pending OR auto-approved)
+4. If pending: admin reviews + approves
+5. On approval: both parties earn their reward    (logged as referral_bonus transactions)
+```
+
+The referrer's code lives on their member profile, distinct from the card ID. They can pull it up any time and share via SMS, email, social, etc.
+
+---
+
+## Find a Member's Referral Code
+
+Two ways:
+
+1. **Dashboard**: Open **Customers > [name] > Loyalty tab** — referral code is shown next to the card ID.
+2. **Self-service**: The customer hits their account page on the storefront — `GET /loyalty/me` returns their code.
+
+Codes are stable — they don't rotate unless you explicitly re-roll them in the member's profile.
+
+---
+
+## Two Modes: Auto-Approve vs. Pending Review
+
+Set in **Loyalty > Settings**:
+
+### Auto-approve (default for low-fraud businesses)
+The moment the referee signs up with a valid code, both parties earn immediately. Fastest gratification, lowest friction. Use when:
+- Average reward is small (< BDT 200 equivalent)
+- Customer base is established / you trust signups
+- You want viral spread
+
+### Pending review (for high-value programs)
+New referrals enter `pending` status. They appear on the **Referrals** dashboard (and on each member's profile under "Pending Referrals"). An admin reviews and clicks **Approve** or **Reject**.
+
+Use when:
+- Reward is large enough to attract abuse
+- You've seen bot-style signups before
+- Compliance requires manual review of new account incentives
+
+---
+
+## Approve or Reject
+
+Go to **Customers > [referrer] > Loyalty tab > Pending Referrals**. For each row:
+
+- **Approve** — both parties earn their points immediately. The referral status becomes `approved`. Logged with your user ID.
+- **Reject** — no points earned. The referee can still complete the signup, just without the bonus. Add an optional rejection note.
+
+Rejected referrals are kept for audit but can't be re-approved — the referee would need to retry with a fresh signup if you change your mind.
+
+---
+
+## Anti-Abuse Limits
+
+The system enforces two caps to prevent gaming:
+
+- **Max referrals per period** — default: 10 per 30 days, per member
+- **Self-referral block** — a member can't use their own code
+
+Beyond these:
+- Same email can't be referred twice
+- Suspended members' codes don't earn rewards
+- IP / device fingerprinting (if enabled) flags suspicious patterns for manual review
+
+Adjust the per-period limit in **Loyalty > Settings**.
+
+---
+
+## Referral Rewards Are Independent
+
+The referrer reward and referee reward are **separate point amounts** with separate caps. You can:
+
+- Reward only one side (set the other to 0)
+- Reward differently (e.g. 200 to referrer, 100 to referee)
+- Add a tier multiplier (Gold members get 2× referral rewards) via tier benefits
+
+Set reward sizes in **Loyalty > Settings > Referrals**.
+
+---
+
+## Reporting
+
+The Referrals dashboard shows:
+
+- **Total referrals this month** + breakdown by status (`pending`, `approved`, `rejected`, `expired`)
+- **Top referrers** — leaderboard by approved referral count
+- **Approval rate** — green/yellow/red traffic light based on approved / total
+
+For deeper analysis, query `GET /loyalty/referrals?from=...&to=...` from the SDK and slice however you need.
+
+---
+
+## Common Questions
+
+**Can a member refer 100 friends in one day?** No — the per-period limit caps it. They'll get a friendly error after the 10th (or whatever you set).
+
+**Does the referee earn points BEFORE their first order?** Yes — the bonus lands on signup. Their first order then earns standard order points on top.
+
+**What if the referee never buys anything?** The referrer keeps their reward. Some businesses prefer the opposite — set "delayed approval" by configuring referrals to `pending` and only approving after the referee's first paid order.
+
+**Can I track campaigns separately?** Yes — pass a `metadata.campaign` value when calling the self-record endpoint. Filter the referrals list by `metadata.campaign` for per-campaign reporting.
+
+---
+
+## What's next?
+
+- [Members](/commerce-bd/docs/loyalty/members) — view per-member referral history
+- [Tiers](/commerce-bd/docs/loyalty/tiers) — gate referral multipliers behind tier benefits
+- [Permissions](/commerce-bd/docs/loyalty/permissions) — who can approve vs. reject vs. just view

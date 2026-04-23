@@ -1,0 +1,110 @@
+---
+title: CRM — Getting Started
+description: Track leads, manage sales opportunities, and close deals — concepts and workflow
+---
+
+# Getting Started
+
+The CRM module tracks the **path from a stranger to a paying customer** — inbound leads, qualified prospects, sales opportunities, and the activity history that ties it all together.
+
+> **Heads up — dashboard UI is in development.** The CRM API + SDK are production-ready and integrated with the rest of the platform. Custom dashboards can already be built on top. The bundled BigBoss dashboard pages for CRM are coming in a future release.
+
+---
+
+## The Six Concepts
+
+| Concept | What it is |
+|---------|------------|
+| **Lead** | An inbound prospect — name, email, source. Hasn't bought anything yet. |
+| **Account** | A company or organization — industry, size, domain. |
+| **Contact** | A person at an account — job title, email, phone. |
+| **Opportunity** | A sales deal in progress — amount, stage, expected close date. |
+| **Activity** | Work done on a lead/opportunity — call, email, meeting, task. |
+| **Note** | Free-text comment on any record — not a task, just context. |
+
+The flow:
+
+```
+Inbound form/email   →  Lead created
+Outreach + qualify   →  Lead activities, status: contacted → qualified
+Found a real deal    →  Convert lead → Account + Contact + Opportunity
+Move through pipeline →  Opportunity stages: Qualify → Propose → Negotiate
+Deal closes          →  Win (Customer becomes "active") or Lose (with loss reason)
+```
+
+---
+
+## Lead vs. Customer — Where the Line Is
+
+The CRM lives **upstream** of the existing Customers module:
+
+- A **Lead** is someone you're hoping to sell to. They might be a fit, might not.
+- A **Contact** is a real person at a company you're working with — created when a lead converts.
+- A **Customer** (in the Customers module) is created when an opportunity is **won**. The CRM's `crm:opportunity.won` event automatically updates `Customer.crm.stage = 'active'`.
+
+So Customers is the **post-sale** view; CRM is the **pre-sale** funnel that feeds it.
+
+[See Customers in the dashboard](/dashboard/customers)
+
+---
+
+## A Typical Sales Week
+
+Here's how a sales rep uses the CRM end-to-end:
+
+1. **Triage new leads** — yesterday's inbound forms appear as `new` leads. The rep marks the ones worth pursuing as `contacted` after their first outreach.
+2. **Qualify the good ones** — calls and emails happen; each becomes an **activity** logged against the lead. Promising ones move to `qualified`.
+3. **Convert** — when a qualified lead has a real budget + decision-maker, the rep clicks **Convert**. The system creates an Account, a Contact, and an Opportunity in one atomic action.
+4. **Move the deal** — the rep advances the opportunity through pipeline stages (`Qualify` → `Propose` → `Negotiate` → `Close`). Each stage has a default win probability.
+5. **Close** — the rep marks the opportunity **Won** (deal signed!) or **Lost** (must include a loss reason). The Customer record auto-updates.
+6. **Reflect** — at the end of the week, run reports on conversion rate by stage, win rate by loss reason, and per-rep activity volume.
+
+---
+
+## Why Loss Reasons Matter
+
+When you mark an opportunity **Lost**, the system **requires** a loss reason — picked from a configurable list (Budget, Competitor, Timing, No-decision, etc.). This is intentional friction:
+
+- Without it, "lost" data is useless — you can't tell a price problem from a timing problem
+- With it, a quarter of "lost" data tells you exactly where your funnel leaks
+- Reports group lost opportunities by reason so you can fix the actual problem
+
+[See Loss Reasons](/commerce-bd/docs/crm/loss-reasons)
+
+---
+
+## Branch Scoping
+
+CRM data is **per-branch** via `x-organization-id`:
+
+- Each branch has its own leads, accounts, opportunities, pipelines, loss reasons
+- Switching branches in the dashboard switcher shows that branch's CRM
+- A single nationwide deal is owned by ONE branch — the one that closes it
+
+If you have a head office handling enterprise deals while branches handle regional retail, run the head office's CRM in the head-office branch. Other branches focus on their local funnel.
+
+---
+
+## What's Coming When the UI Ships
+
+The dashboard pages we're building will give you:
+
+- **/dashboard/crm/leads** — kanban + list views, bulk actions, lead scoring
+- **/dashboard/crm/opportunities** — pipeline kanban, drag-to-advance, win/loss flow
+- **/dashboard/crm/accounts** + **/contacts** — relationship browser
+- **/dashboard/crm/pipelines** — define stages and probabilities per pipeline
+- **/dashboard/crm/loss-reasons** — manage the close-lost taxonomy
+- **/dashboard/crm/activities** — calendar view, follow-up reminders, team scheduling
+
+Until then, the same operations are available via the SDK / REST API — see the next pages in this guide for endpoint references.
+
+---
+
+## What's next?
+
+- [Leads](/commerce-bd/docs/crm/leads) — capture, qualify, convert
+- [Opportunities](/commerce-bd/docs/crm/opportunities) — move deals through stages, win/lose
+- [Accounts & Contacts](/commerce-bd/docs/crm/accounts-and-contacts) — companies and the people inside them
+- [Pipelines](/commerce-bd/docs/crm/pipelines) — model your sales process
+- [Activities & Notes](/commerce-bd/docs/crm/activities-and-notes) — log calls, schedule follow-ups
+- [Loss Reasons](/commerce-bd/docs/crm/loss-reasons) — categorize closed-lost deals

@@ -1,0 +1,87 @@
+# Roles & Permissions
+
+Who can do what with quotations. The quotation module reuses the same permission slots as orders, so users who can manage orders can manage quotes.
+
+---
+
+## At a glance
+
+| Role | View | Create draft | Send | Accept | Reject | Convert | Edit (draft) | Delete |
+|---|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|
+| **superadmin** | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
+| **admin** | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
+| **branch_manager** | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | — |
+| **cashier** | ✓ | ✓ | ✓ | — | — | — | ✓ | — |
+| **inventory_staff** | ✓ | — | — | — | — | — | — | — |
+| **store-staff** | ✓ | ✓ | ✓ | — | — | — | ✓ | — |
+| **warehouse-staff** | — | — | — | — | — | — | — | — |
+| **warehouse-admin** | — | — | — | — | — | — | — | — |
+
+✓ = allowed, — = not allowed.
+
+This table reflects the default setup. Admins can adjust roles in **Settings > Roles & Permissions**.
+
+---
+
+## What each action means
+
+- **View** — see the list of quotations and open individual quotes
+- **Create draft** — build a new quote (no customer-visible side effects)
+- **Send** — change status to Sent, share with customer
+- **Accept** — change status to Accepted (customer-confirmed)
+- **Reject** — change status to Rejected (terminal)
+- **Convert** — turn an accepted quote into a real Order
+- **Edit (draft)** — modify lines, prices, customer, notes — only works while the quote is in Draft
+- **Delete** — soft-delete the quote (audit trail preserved, but it stops appearing in lists)
+
+---
+
+## Branch scoping
+
+Every quotation is **scoped to a branch**. A user with permission can only see quotes for branches they're a member of.
+
+- Head office: sees all branches' quotes (if the user is a multi-branch admin)
+- Store users: only see quotes for that store
+- Switching branches in the top bar changes the visible quote book
+
+This matches how orders are scoped — users can't accidentally accept or convert a quote that belongs to another branch.
+
+---
+
+## Approval chains
+
+For high-value quotes, you can configure an **approval workflow** that gates the **Accept** action:
+
+- A quote with required approvals can be created and sent freely
+- But it cannot move to **Accepted** until each required approver has approved
+- The quote shows the approval status panel: who approved, who skipped, who's pending
+
+Configure approval rules in **Settings > Approval Workflows**:
+
+- By **amount threshold** (e.g., quotes > 100,000 BDT need manager sign-off)
+- By **discount percentage** (e.g., > 20% discount needs sales director)
+- By **customer segment** (e.g., new customers need credit team review)
+
+Approvers receive an in-app notification when a quote needs their attention.
+
+---
+
+## Audit trail
+
+Every status change on a quotation is recorded:
+
+- Who did it (user ID + name)
+- When (timestamp)
+- What changed (status from → to)
+- Why (reason text, when applicable — e.g., rejection reason)
+
+This is visible in the quote's **History** panel and is permanent — it doesn't disappear when the quote is converted, expired, or deleted.
+
+For accountants and compliance: the full history is also queryable from the audit log (admin-only).
+
+---
+
+## What's next?
+
+- [Quotations Overview](/dashboard/orders/learn/quotations-overview) — back to the start
+- [Convert a Quote to an Order](/dashboard/orders/learn/convert-to-order) — the conversion path

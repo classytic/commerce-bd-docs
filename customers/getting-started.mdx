@@ -1,0 +1,83 @@
+---
+title: Customers — Getting Started
+description: Manage retail and B2B customers — profiles, addresses, credit terms, and the full A/R ledger
+---
+
+# Getting Started
+
+The Customers module holds **everyone you sell to** — walk-in retail buyers, online shoppers, and credit-account B2B clients. Each customer carries their order history, addresses, optional credit terms, and an A/R ledger.
+
+[Open Customers](/dashboard/customers)
+
+---
+
+## How customers get into the system
+
+Three ways:
+
+1. **Auto-created at checkout** — Walk-in POS sales and online checkouts create a customer record automatically (using phone or email as the dedup key). No manual entry needed.
+2. **Manual create** — For B2B accounts you want to set up before their first order, click **New Customer** on the list page.
+3. **Better Auth signup** — When a buyer registers on the storefront, the system links their auth user to a customer record (matching by phone/email).
+
+The system **deduplicates** on phone, email, and (if used) loyalty card ID — so the same buyer doesn't end up as multiple records.
+
+---
+
+## Customer Types
+
+Set on the profile to drive default pricing and credit policy:
+
+| Type | When to use |
+|------|-------------|
+| **Retail** | Walk-in customers, online buyers — standard pricing, no credit |
+| **Wholesale** | Resellers, bulk buyers — wholesale price list, optional credit |
+| **Distributor** | Channel partners — tiered pricing, larger credit limits |
+
+Type is informational + drives front-end logic. The actual price list and credit terms are set independently on each customer.
+
+---
+
+## Quick Tour
+
+1. Open **Customers** — search by name, phone, or email
+2. Click a row → customer detail page opens with three sections:
+   - **Profile** — name, contact info, addresses, type, tags
+   - **A/R Ledger** — every invoice, payment, debit note + running balance + aged buckets
+   - **Loyalty** (if enrolled) — card ID, tier, balance, history (see [Loyalty Members](/commerce-bd/docs/loyalty/members))
+3. Top-of-page KPI cards show: total orders, lifetime revenue, revenue tier (Bronze/Silver/Gold/Platinum)
+
+---
+
+## Revenue Tier — Auto-Computed
+
+Every customer has a **revenue tier** based on lifetime spend (in BDT):
+
+| Tier | Threshold |
+|------|-----------|
+| Platinum | ≥ 100,000 |
+| Gold | ≥ 50,000 |
+| Silver | ≥ 10,000 |
+| Bronze | < 10,000 |
+
+This is **separate from the loyalty tier** (Silver/Gold/Platinum from the Loyalty module). Revenue tier is a pure analytics view based on orders. Loyalty tier is rules-driven and confers benefits.
+
+---
+
+## Common First Tasks
+
+| Task | Where |
+|------|-------|
+| Add your first B2B customer | **Customers > New Customer** — fill in name, phone, type=`wholesale` |
+| Enable credit for a customer | **Customer profile > Credit Terms card** — toggle on, set limit + days |
+| Record an opening A/R balance | **Customer profile > A/R Ledger tab > Opening Balance** |
+| Enroll in loyalty | **Customer profile > Loyalty tab > Enroll** |
+| Tag VIPs for filtering | **Customer profile > Tags** — add `vip`, `wholesale`, etc. |
+
+---
+
+## What's next?
+
+- [Profile & Addresses](/commerce-bd/docs/customers/profile-and-addresses) — managing contact info and delivery addresses
+- [Credit & A/R Ledger](/commerce-bd/docs/customers/credit-and-ar-ledger) — credit terms, payment recording, aged buckets
+- [Segmentation & Tags](/commerce-bd/docs/customers/segmentation) — group customers for campaigns and reports
+- [Permissions](/commerce-bd/docs/customers/permissions) — who can see, edit, or extend credit

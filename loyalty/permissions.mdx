@@ -1,0 +1,94 @@
+---
+title: Loyalty Roles & Permissions
+description: Who can configure programs, manage members, adjust points, and approve referrals
+---
+
+# Roles & Permissions
+
+The loyalty module uses a mix of **system roles** and **branch roles** for access control.
+
+[See the platform reference](/commerce-bd/docs/platform/permissions) for how the role layers work generally.
+
+---
+
+## Quick Map
+
+| Action | Required role |
+|--------|---------------|
+| View loyalty dashboard | Branch member with `branch_manager` or higher |
+| List members + view balances | Branch member, any role |
+| Create / update **earning rules** | `admin` or branch_manager |
+| Create / update **tiers** | `admin` only |
+| Manually adjust points | `branch_manager` or `admin` |
+| Set tier override | `admin` only |
+| Suspend / reactivate member | `branch_manager` or `admin` |
+| Approve / reject referrals | `branch_manager` or `admin` |
+| Configure conversion rate, max-redeem cap | `superadmin` only |
+
+---
+
+## Why Tiers Are Admin-Only
+
+Tier qualification thresholds, multipliers, and benefits affect every member at once. A casual edit can accidentally re-rank thousands of members or undercut your margin model.
+
+Restricting tier writes to `admin` means:
+- Only platform-level operators (head office) can change them
+- Branch managers focus on day-to-day operations (rules, members, referrals)
+- The audit trail for tier changes is concise and easy to review
+
+If a branch manager needs a tier change, they request it from head office — keep the request in the tier's `metadata` for trace.
+
+---
+
+## Conversion Rate & Max-Redeem (Superadmin Only)
+
+These two settings sit under **Loyalty > Settings**:
+
+- **Conversion rate** — how many points equal 1 BDT of discount
+- **Max-redeem cap** — % of order subtotal that can be paid with points
+
+Changing either has immediate impact on every redemption everywhere. Restricted to `superadmin` to prevent accidental "100 points = 1 BDT" → "1 point = 100 BDT" disasters.
+
+---
+
+## Branch Scoping
+
+Loyalty data is **per-branch** via `x-organization-id`:
+
+- Each branch has its own members, earning rules, tiers, referrals
+- Switching branches in the dashboard switcher shows that branch's loyalty surface
+- A customer can be a member in branch A and not in branch B (separate enrollments)
+
+If you run a single nationwide loyalty program (one set of tiers across all branches), set up the **same tier definitions** in every branch and use shared customer IDs. There's no built-in "global loyalty" mode.
+
+---
+
+## Audit Trail
+
+Every action that mutates a balance or status creates a transaction with:
+
+- **Type** — `earn`, `redeem`, `adjust`, `expire`, `transfer`, `referral_bonus`
+- **Actor ID** — the user (or `system` for automated rules) that triggered it
+- **Reference** — link to the order, rule, referral, or override that caused it
+- **Reason** — required on manual adjustments and overrides
+- **Timestamp** — exact UTC time
+
+Pull a member's full ledger via the **History** panel on their Loyalty tab, or programmatically via `GET /loyalty/members/:customerId/history`.
+
+---
+
+## Common Patterns
+
+**"Branch managers should approve their own branch's referrals"** — default behavior; works out of the box.
+
+**"Only head office should adjust points over 500"** — not enforced by the system today. Apply via internal policy or build a custom front-end check that hides the "Adjust" button for non-admins on amounts > 500.
+
+**"Read-only access for accountants"** — give accountants `branch_member` with `viewer` branch role. They see balances and history but no Edit/Adjust buttons.
+
+---
+
+## What's next?
+
+- [Members](/commerce-bd/docs/loyalty/members) — what each role sees on the member profile
+- [Earning Rules](/commerce-bd/docs/loyalty/earning-rules) — who can edit rule conditions
+- [Platform Permissions](/commerce-bd/docs/platform/permissions) — how roles are assigned in the first place

@@ -1,0 +1,98 @@
+# Discount Programs
+
+A program bundles **rules** (when to fire) and **rewards** (what to give).
+
+---
+
+## Create a Program
+
+Go to **Settings > Promotions** and click **New Program**. Fill in:
+
+- **Name** — internal label (e.g. "Eid 2026 — 15% off")
+- **Description** — optional, helps your team
+- **Program Type** — `promotion`, `coupon`, `discount_code`, `buy_x_get_y`, or `gift_card`
+- **Trigger Mode** — `auto` (no code) or `code` (voucher required)
+- **Stacking Mode** — `exclusive` or `stackable`
+- **Priority** — higher number wins when multiple exclusive programs match
+
+Click **Save**. The program starts in **draft** — it won't apply to any cart until you activate it.
+
+[Open Promotions](/dashboard/promotions)
+
+---
+
+## Add Rules
+
+A rule is a **condition** — at least one rule must match for the program to fire. From the program's detail page, click **Add Rule**:
+
+- **Minimum Amount** — e.g. `1000` (cart total must be ≥ BDT 1000)
+- **Minimum Quantity** — e.g. `2` (at least 2 items in cart)
+- **Applicable Products / Categories / SKUs** — narrow the scope
+- **Buy Quantity** — for buy-x-get-y programs ("buy 2")
+- **Code** — when trigger is `code`, the literal voucher code can be inlined here for one-off codes
+- **Starts At / Ends At** — schedule the rule (great for weekend sales)
+
+You can attach **multiple rules** to one program. The cart must satisfy ALL rules for the program to fire.
+
+---
+
+## Add Rewards
+
+A reward is **what the customer gets**. Click **Add Reward**:
+
+- **Reward Type** — `discount` or `free_product`
+- **Discount Mode** — `percentage` (e.g. 10 = 10%) or `fixed` (e.g. 200 = BDT 200 off)
+- **Discount Amount** — the value
+- **Max Discount Amount** — cap, useful for percentage discounts ("10% off, max BDT 500")
+- **Discount Scope**:
+  - `order` — applied to the cart total
+  - `cheapest` — applied to the cheapest item only (great for "buy 2 get 1")
+  - `specific_products` — applied only to selected SKUs
+- **Free Product ID / SKU / Quantity** — for `free_product` rewards
+- **Gift Card Amount** — for gift card programs
+
+A program can have **multiple rewards** — e.g. 10% off + free shipping.
+
+---
+
+## Lifecycle: Draft → Active → Paused → Archived
+
+State transitions use Stripe-style action buttons on the program page:
+
+| From | Action | To |
+|------|--------|----|
+| `draft` | **Activate** | `active` |
+| `active` | **Pause** | `paused` |
+| `active` / `paused` | **Archive** | `archived` |
+| `paused` | **Activate** | `active` |
+
+Only **active** programs apply to live carts. Archive is permanent — use **Pause** if you might re-enable later.
+
+---
+
+## Limit Usage
+
+Two caps you can set on the program:
+
+- **Max Usage Total** — across all customers (e.g. first 100 redemptions only)
+- **Max Usage Per Customer** — how many times each customer can use it (default: unlimited)
+
+The system tracks redemptions atomically — once the cap is hit, the program is automatically marked `expired`.
+
+---
+
+## Customer Targeting
+
+Restrict a program to specific customers:
+
+- **Applicable Customer IDs** — exact customer list (VIPs, beta users)
+- **Applicable Customer Tags** — anyone tagged `vip`, `wholesale`, etc.
+
+Leave both blank to make the program available to all customers.
+
+---
+
+## What's next?
+
+- [Voucher Codes](/dashboard/promotions/learn/vouchers) — issue codes for code-trigger programs
+- [Cart Evaluation Flow](/dashboard/promotions/learn/evaluation) — debug what's getting applied

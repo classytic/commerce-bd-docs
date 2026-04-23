@@ -1,0 +1,74 @@
+# Importer basics
+
+You import goods through customs and resell them domestically. NBR's
+customs point is where the tax heavy-lifting happens.
+
+## What you pay at customs
+
+NBR stacks taxes in this order:
+
+```
+  Assessable Value (CIF + landing charge)  ──►  the BASE
++ Customs Duty (CD%)
++ Supplementary Duty (SD%)    ← 0 for most non-luxury
++ Advance Tax (AT 5%)          ← on AV + CD + SD
++ VAT (15%)                    ← on AV + CD + SD + AT
++ Advance Income Tax (AIT 5%)  ← separate, on AV
+
+= Total customs payment
+```
+
+## Where the money lands (GL)
+
+| Tax | Account | Claimable? |
+|---|---|---|
+| CD | Inventory cost (1161/1163/1165) | No — cost |
+| SD | Inventory cost | No — cost |
+| VAT | `1150.VAT15.INPUT` | YES — offset output VAT |
+| AT | `1151 AIT` | No — offset INCOME tax only |
+| AIT | `1151 AIT` | No — offset INCOME tax only |
+
+**Critical distinction**: AT and VAT both say "tax" but they're different.
+VAT is VAT (reclaim against sales VAT). AT is an advance on your
+INCOME tax — tracked separately, credits against annual IT return.
+
+## What the system does automatically
+
+1. **Customs clearance**: `import-clearance.contract.ts` posts the full
+   stack in the right sequence. Inventory gets CD+SD folded into cost;
+   VAT lands in 1150; AT+AIT land in 1151.
+2. **Resale**: normal 15% VAT output, standard 1150 offset.
+3. **Monthly Mushak 9.1**: input VAT from imports flows in via the tax
+   aggregator — same as domestic purchases.
+4. **Annual income-tax filing**: use the AT/AIT reconciliation dashboard
+   (`/dashboard/accounting/at-reconciliation`) to claim `1151` against IT.
+
+## Field you need on every import
+
+- **Bill of Entry number** — NBR cross-references this on audit.
+- **Assessable value** — the CIF value NBR stamped at customs (not your
+  invoice currency amount; they use a gazetted rate).
+- **HS code** — drives the CD/SD rates.
+
+Product HS code can be set on the variant (`variant.identifiers.hsCode`).
+
+## Bonded warehouse
+
+Not all imports clear as DTA. If you hold a bonded licence, imported
+material can sit in bond with deferred VAT until consumed/exported.
+That path is separate — see [RMG exporter basics](rmg-exporter-basics.md).
+
+## Common questions
+
+**Do I still need domestic Mushak 6.3 on resale?**
+Yes — every sale to a VAT-registered buyer (or over BDT 10k) needs 6.3.
+System generates automatically.
+
+**Can I claim AT as input VAT?**
+No — this is a common mistake. AT is an income-tax advance, not VAT.
+
+## Related
+
+- [Business types](business-types.md)
+- [VAT basics](vat-basics.md)
+- [RMG exporter basics](rmg-exporter-basics.md) — for bonded import flow

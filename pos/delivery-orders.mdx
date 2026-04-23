@@ -1,0 +1,118 @@
+# Delivery Orders from POS
+
+Most POS sales are **instant** — customer at the counter, swipe their card or hand over cash, take the goods, done. But sometimes a walk-in customer wants the item shipped instead: large furniture they can't carry, an item from another branch's stock, a gift they want delivered elsewhere.
+
+This page covers how to handle those cases from the POS terminal.
+
+---
+
+## Walk-in vs delivery — the toggle
+
+Every POS cart has a **Delivery Method** toggle:
+
+| Mode | When to use |
+|---|---|
+| **Pickup** (default) | Customer takes the item now. Stock decrements from the store's stock location. No fulfillment. |
+| **Delivery** | Ship the item to a specified address. Stock is reserved; a fulfillment is created; the package enters the shipping workflow. |
+
+Switch to **Delivery** before ringing up the sale. Once payment is tendered, you can't change delivery mode without voiding the sale.
+
+---
+
+## Capturing the delivery address
+
+With delivery mode selected, a **Shipping Address** form appears at checkout:
+
+| Field | Notes |
+|---|---|
+| **Recipient name** | Who signs for the package |
+| **Phone** | Delivery contact — usually the customer's number, or someone else if it's a gift |
+| **Division / Area picker** | Pick from the bd-areas picker so routing IDs get captured. See [Addresses & Routing](/logistics/addresses-and-routing) |
+| **House / Road / Block** | Line 1 of the address |
+| **Apt / Landmark** | Line 2 (optional but helpful for couriers) |
+| **Special instructions** | Leave at reception, call before delivery, etc. |
+
+If the customer is signed in (loyalty account, registered customer), their saved addresses appear as quick-select chips. Picking one pre-fills the form.
+
+---
+
+## What happens on submit
+
+1. **Cart line items** are captured as normal — quantities, prices, promos
+2. **Payment** is tendered at the counter (cash, card, bKash, etc.) — or marked as **COD** if they'll pay on delivery
+3. An **order** is created (not just a POS sale)
+4. A **fulfillment** is created in `pending` status with the captured address
+5. The order appears in your **Orders** list, not just the POS session report
+6. Stock is **reserved** from the branch's stock location (not yet moved — that happens on dispatch)
+
+---
+
+## Best-effort failures
+
+Address capture is best-effort. If the address translator can't build a valid canonical shape (missing line1, for example), the POS:
+
+- Still completes the sale
+- Logs a warning to the server with the rejected address
+- Creates the order without a fulfillment
+- Shows a yellow banner: "Shipping address incomplete — edit from Orders before dispatch"
+
+This keeps the counter flowing — don't let a keying mistake hold up the queue. Fix the address from the admin Orders page afterward.
+
+---
+
+## Dispatch from the store vs warehouse
+
+The fulfillment's stock location defaults to the **current branch's stock location** — the POS store's own inventory. This is right for "we have it here, ship from here" scenarios.
+
+If the item needs to ship from a different branch's warehouse, you've got two options:
+
+- **Transfer first** — create an inter-branch transfer to move stock to the POS store, then dispatch from there
+- **Retarget the fulfillment** — change the fulfillment's source node to a different warehouse (requires `warehouse-admin` or `admin` role)
+
+Most stores use the first pattern because it keeps the receipt and the dispatch in the same place.
+
+---
+
+## Promotions and pricing
+
+Delivery orders inherit the same promotions as walk-in sales — no separate pricelist. If a promo applies to the cart (e.g., "10% off ৳5,000+"), it applies identically whether the customer walks out with the goods or has them shipped.
+
+**Delivery fees** are added as a separate cart line (not as a pricelist discount). They're configurable in **Platform Settings → Delivery Fees**.
+
+---
+
+## Refunds and returns
+
+Delivery orders from POS behave like any other shipped order:
+
+- **Before dispatch** — cancel the order. Use **Issue Refund** if payment was taken. See [Order Refunds](/accounting/order-refunds)
+- **After delivery** — customer returns via the full RMA flow. See [Returns & RMA](/inventory/returns-rma)
+
+A walk-in POS sale can always be refunded same-day via the standard POS return flow. A delivery POS sale can't be refunded that way after the package leaves — it has to go through RMA.
+
+---
+
+## COD from POS?
+
+Yes — customers can pay on delivery even when ordering at the counter (e.g., "I'll pay your delivery guy when they bring it Monday"). Mark the payment as **COD** instead of cash/card.
+
+The order follows the normal COD workflow — A/R opens at placement, settlement happens when the courier remits. See [COD Settlement](/accounting/cod-settlement).
+
+---
+
+## Permissions
+
+| Role | Can create delivery orders |
+|---|---|
+| `cashier`, `store-staff` | Yes |
+| `branch_manager`, `admin` | Yes — can also retarget source node |
+| POS without delivery rights | Toggle is hidden, only Pickup works |
+
+---
+
+## Related
+
+- [Addresses & Routing](/logistics/addresses-and-routing) — how the address picker works
+- [Pathao CSV Export](/logistics/pathao-export) — shipping the package after the sale
+- [Taking Sales](/pos/taking-sales) — the normal walk-in POS flow
+- [Order Refunds](/accounting/order-refunds) — when things go wrong

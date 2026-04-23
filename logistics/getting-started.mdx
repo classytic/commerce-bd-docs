@@ -1,0 +1,81 @@
+# Logistics
+
+Everything between "order placed" and "package at the customer's door." Covers shipping addresses, courier routing IDs, and batch exports to third-party courier systems.
+
+---
+
+## What's in this section
+
+| Page | Covers |
+|---|---|
+| [Addresses & Routing](/logistics/addresses-and-routing) | How customer addresses are stored, which fields the carriers need, and how Pathao area/zone IDs are resolved |
+| [Pathao CSV Export](/logistics/pathao-export) | Batch-export shippable orders as a Pathao-compatible CSV for bulk upload |
+
+---
+
+## How shipping fits together
+
+```
+Order placed
+    │
+    ▼
+Shipping address captured (storefront / POS delivery / admin entry)
+    │         Addresses carry name, phone, division/state, city,
+    │         line1/line2, postal code — and optional routing IDs
+    │         (Pathao cityId / zoneId / areaId).
+    ▼
+Fulfillment created (status: pending)
+    │
+    ▼
+Export to courier (Pathao CSV, manual bookings, other carriers)
+    │
+    ▼
+Tracking ID attached → fulfillment transitions shipped → delivered
+    │
+    ▼
+Payment state catches up (for COD: courier remits → Record Settlement)
+```
+
+---
+
+## Supported couriers
+
+| Courier | Integration |
+|---|---|
+| **Pathao** | CSV export (batch upload to Pathao merchant portal) |
+| **RedX** | Address-only (routing IDs stored, no export yet) |
+| **Steadfast, Paperfly, etc.** | Address-only |
+
+Manual bookings work for any courier — just attach the tracking number to the fulfillment afterward.
+
+---
+
+## What the data model stores
+
+Each fulfillment's `shippingAddress` is a structured record, not a free-text blob:
+
+```
+name          — recipient's full name
+phone         — contact number
+line1         — street + house (mandatory)
+line2         — apartment / floor / landmark (optional)
+city          — thana / upazila name
+state         — division (Dhaka, Chittagong, etc.)
+postalCode    — postcode / ZIP
+country       — "BD" for domestic
+areaId        — Pathao area (integer)
+zoneId        — Pathao zone (integer)
+providerRefs  — bag of per-carrier routing IDs, e.g.
+                { pathao: { cityId, zoneId, areaId },
+                  redx:   { areaId } }
+```
+
+The `providerRefs` bag lets you store multiple carriers' IDs without losing data if you switch couriers mid-campaign.
+
+---
+
+## Related
+
+- [COD Settlement](/accounting/cod-settlement) — what happens after delivery when cash comes back
+- [POS Delivery Orders](/pos/delivery-orders) — creating shippable orders from the store counter
+- [Returns & RMA](/inventory/returns-rma) — reverse logistics

@@ -1,0 +1,164 @@
+# Stacking & Priority
+
+When multiple promotions could apply to a cart, the system has to decide which ones actually do. This page covers how that decision is made and how to configure it so you don't accidentally give away the store.
+
+---
+
+## Three stacking modes
+
+Every program has a **stacking** setting. The mode controls whether it can combine with others:
+
+| Mode | Behavior |
+|---|---|
+| `exclusive` | Only this program applies. Beats other exclusive programs by priority. |
+| `stackable` | Applies on top of anything else that's also stackable. |
+| `exclusive-on-type` | Applies once per cart, but stacks across different types (e.g., one discount + one free shipping). |
+
+Most product discounts are `exclusive` (you want the best deal, not all deals). Free shipping and gift cards are usually `stackable`. BXGY bundles are usually `exclusive-on-type`.
+
+---
+
+## The resolution algorithm
+
+When the cart is evaluated, the engine runs this logic:
+
+```
+1. Filter programs whose conditions match the cart.
+2. Split matches into two buckets:
+   - Exclusive candidates
+   - Stackable candidates
+3. Resolve exclusives:
+   - Sort by priority (lower number wins).
+   - If priorities tie, sort by discount value (bigger wins).
+   - Keep the winner, drop the rest.
+4. Apply all stackables on top.
+5. Compute final cart total.
+```
+
+The winner-takes-all rule in step 3 prevents double-dipping. If you have both "10% off ৳5,000+" and "Free gift ৳3,000+" as exclusive programs, the customer gets one of them — whichever is set to higher priority.
+
+---
+
+## Priority field
+
+Every program has a `priority` integer. Lower = earlier in the sort order = wins ties.
+
+| Priority | Intent |
+|---|---|
+| 1–10 | Campaign-critical — Eid sale, clearance |
+| 11–50 | Standard programs — category discounts |
+| 51–99 | Catch-alls — "10% off everything" |
+| 100+ | Inactive / placeholder |
+
+The UI lets you reorder by drag-drop on the programs list; the backing field is `priority`.
+
+> When two programs genuinely should both run, set both to `stackable`, not different priorities. Priority is the tiebreaker among exclusives, not a way to force co-application.
+
+---
+
+## Stacking examples
+
+**Case 1 — two exclusives, one wins**:
+
+Cart: ৳6,000 order of apparel.
+
+- Program A: `exclusive`, priority 10, "15% off orders > ৳5,000"
+- Program B: `exclusive`, priority 20, "৳500 off apparel"
+
+A wins (priority 10 < 20). Cart discount: ৳900 (15% of ৳6,000). B is not applied.
+
+**Case 2 — exclusive + stackable**:
+
+Cart: ৳6,000 order.
+
+- Program A: `exclusive`, "15% off > ৳5,000" → ৳900
+- Program B: `stackable`, "free shipping > ৳2,000" → ৳150 shipping waived
+
+Both apply. Customer saves ৳1,050.
+
+**Case 3 — three stackables**:
+
+Cart: ৳6,000 order, new customer, paid via bKash.
+
+- Program A: `stackable`, "5% bKash promo" → ৳300
+- Program B: `stackable`, "first-order 10% off" → ৳600
+- Program C: `stackable`, "free shipping"  → ৳150
+
+All three apply. Total savings: ৳1,050. Cart charges ৳4,950.
+
+**Case 4 — exclusive-on-type**:
+
+Cart: ৳10,000 furniture order.
+
+- Program A: `exclusive-on-type` (type=discount), priority 10, "10% off"
+- Program B: `exclusive-on-type` (type=discount), priority 20, "৳800 off"
+- Program C: `exclusive-on-type` (type=free_shipping), "free shipping"
+
+A wins among discount-typed programs; C applies alongside (different type). B is dropped.
+
+---
+
+## Voucher codes and stacking
+
+Vouchers follow the same rules as their parent program. If a code is tied to an `exclusive` program, applying it knocks out any other exclusive already on the cart.
+
+**Per-cart code limit**: a cart can carry **at most one voucher code** (enforced at the input level). To apply multiple codes, their programs must all be `stackable` and you'd need a UI redesign — not supported today.
+
+---
+
+## Loyalty and promos
+
+Points redemption is conceptually a separate discount layer. By default:
+
+- **Redemption applies on top** of any promotional discount (cart subtotal after promo, then points redeem against that)
+- Programs can set `allowLoyaltyStacking: false` to block redemption when they're active
+- Programs can set `earnBlocked: true` to block points earning on discounted lines
+
+Use these flags when you need to prevent "double-dipping" — e.g., a clearance program where you've already cut margin to zero.
+
+---
+
+## Common misconfigurations
+
+| Symptom | Cause | Fix |
+|---|---|---|
+| "Customer got two discounts I didn't intend" | Both programs set to `stackable` | Change one to `exclusive` |
+| "The wrong promo is winning" | Priority inverted | Lower the priority number of the intended winner |
+| "No promo applied" | Voucher code tied to inactive program, or condition didn't match | Check program status + condition log in evaluate preview |
+| "Shipping doubled up" | Multiple free-shipping programs, all stackable | Change shipping programs to `exclusive-on-type` with type=`shipping` |
+| "Points redemption ignored" | Program has `allowLoyaltyStacking: false` | Either allow, or tell customer to use either points or code, not both |
+
+---
+
+## Debugging — the evaluate preview
+
+Before going live with a new program, run a **preview** against a test cart:
+
+**Promotions → {program} → Preview**
+
+Enter a sample cart (customer, items, subtotal) and see:
+- Which programs were candidates
+- Which conditions matched / failed and why
+- The priority resolution log
+- Final applied programs and discount amounts
+
+This is a read-only call — no side effects, nothing posts. See [Applying Promotions](/promotions/applying-promotions) for the production flow.
+
+---
+
+## Permissions
+
+| Action | Who |
+|---|---|
+| Create / edit programs | `admin`, `branch_manager` |
+| Change stacking mode on active program | `admin` only |
+| Reorder priority | `admin`, `branch_manager` |
+| Run preview | Any authenticated user |
+
+---
+
+## Related
+
+- [Discount Programs](/promotions/programs) — program anatomy + types
+- [Voucher Codes](/promotions/vouchers) — code-triggered programs
+- [Applying Promotions](/promotions/applying-promotions) — the evaluate/commit/rollback lifecycle

@@ -1,0 +1,67 @@
+# Getting Started
+
+How promotions work in the platform — five concepts in five minutes.
+
+---
+
+## The Five Pieces
+
+| Concept | What it is |
+|---------|-----------|
+| **Program** | The campaign — "10% off", "Buy 2 Get 1", "Eid Sale" |
+| **Rule** | The condition — "minimum order BDT 1000", "applies to category Electronics" |
+| **Reward** | The benefit — "10% off the order", "free gift product" |
+| **Voucher** | The code customers type — `EID2026`, `WELCOME10` |
+| **Evaluation** | The checkout step that calculates and applies the discount |
+
+A program ties everything together. One program can have multiple rules and rewards.
+
+---
+
+## Two Trigger Modes
+
+When you create a program, pick one:
+
+- **Auto** — fires automatically when the cart matches. Great for "Spend BDT 5000, get free shipping" or seasonal sales. No code required.
+- **Code** — only applies when the customer enters a voucher. Use for marketing campaigns, influencer codes, or customer-specific discounts.
+
+---
+
+## Five Program Types
+
+| Type | Use for |
+|------|---------|
+| `promotion` | Generic auto-discount (Eid sale, weekend special) |
+| `coupon` | Single-use voucher per customer |
+| `discount_code` | Public marketing code (e.g. `WELCOME10`) |
+| `buy_x_get_y` | Bundles like "Buy 2 shirts, get 1 free" |
+| `gift_card` | Top-up balance customers spend over time |
+
+You can run **many programs at once**. The **stacking mode** controls whether they combine:
+
+- **Exclusive** — only one program applies per cart (the highest-priority one wins)
+- **Stackable** — multiple programs can apply together (e.g. a 10% code + free shipping)
+
+---
+
+## Quick Tour: Create a 10% Off Code
+
+1. **Settings > Promotions** → click **New Program**
+2. Pick **Type**: `discount_code`, **Trigger**: `code`, **Stacking**: `exclusive`
+3. Add a **Rule**: minimum amount BDT 1000
+4. Add a **Reward**: 10% percentage discount, scope = order
+5. Click **Activate**
+6. Generate a single voucher with code `WELCOME10`
+7. Test it in **POS** or the public storefront
+
+That's the full flow. The next pages drill into each step.
+
+[Open Promotions](/dashboard/promotions)
+
+---
+
+## What's next?
+
+- [Discount Programs](/dashboard/promotions/learn/programs) — create and tune programs
+- [Voucher Codes](/dashboard/promotions/learn/vouchers) — generate and manage codes
+- [Cart Evaluation Flow](/dashboard/promotions/learn/evaluation) — what happens at checkout

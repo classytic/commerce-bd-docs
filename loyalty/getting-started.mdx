@@ -1,0 +1,100 @@
+---
+title: Loyalty — Getting Started
+description: Set up the loyalty program for the first time — tiers, earning rules, and member enrollment
+---
+
+# Getting Started
+
+Loyalty rewards customers for repeat business. Set this up once and members earn points on every order; spend them later for discounts.
+
+---
+
+## How it works (in 30 seconds)
+
+```
+Customer enrolls    →   Member with card ID + balance
+Customer buys       →   Earning rule fires    →   Points added
+Customer reaches X  →   Tier auto-upgrades    →   Better multipliers + benefits
+Customer redeems    →   Points reserved → confirmed → discount applied
+Customer refers     →   Referee signs up      →   Both earn bonus points
+```
+
+The system tracks an immutable **point ledger** behind the scenes — every earn, redeem, adjust, and expire is auditable.
+
+---
+
+## 1. Define Your Tiers
+
+Tiers are the membership levels — Silver, Gold, Platinum, etc. Each tier has its own earning multiplier and benefits.
+
+Go to **Loyalty > Tiers** and click **New Tier**. For each tier:
+
+- **Name + Rank** — display name and ordering (1 = lowest)
+- **Qualification** — minimum lifetime points OR minimum lifetime spend (per period, e.g. 90 days)
+- **Benefits** — earning multiplier (e.g. 1.5×), discount %, free shipping, custom flags
+- **Downgrade grace** — days at lower spend before the member drops a tier (default: 30)
+
+Tiers re-evaluate automatically when members earn or redeem. Use **Evaluate All** if you change qualification rules and want to recompute everyone immediately.
+
+[Open Tiers](/dashboard/loyalty/tiers)
+
+---
+
+## 2. Add Earning Rules
+
+Rules decide how many points a customer earns for each action.
+
+Go to **Loyalty > Earning Rules** and click **New Rule**. Pick a type:
+
+- **Order** — points based on order amount (e.g. "1 point per BDT 10 spent")
+- **Action** — fixed points for events like signup, birthday, first order, write a review
+- **Category** — bonus points when buying from a specific product category
+- **Tier Bonus** — multiplier applied to a specific tier (e.g. "Gold members earn 2× on weekends")
+
+Each rule has:
+
+- **Conditions** — minimum order amount, eligible categories/tiers, day-of-week, date range
+- **Reward** — fixed points OR points-per-unit OR multiplier
+- **Caps** — max points per transaction (prevents one whale order from breaking the budget)
+- **Priority** — when multiple rules match, lower priority numbers win
+
+Activate rules with **Activate**; pause with **Pause**.
+
+[Open Earning Rules](/dashboard/loyalty/earning-rules)
+
+---
+
+## 3. Enroll Customers
+
+Customers become members in two ways:
+
+- **Self-enroll** — they hit "Join" on the storefront or in the customer portal (calls `POST /loyalty/me/enroll`)
+- **Admin enroll** — go to **Customers > select a customer > Loyalty tab > Enroll**
+
+Each member gets:
+- A **card ID** (e.g. `MBR-DHK-00004821-8`) for POS scanning
+- A **referral code** (8 chars, distinct from card ID) to share with friends
+- Balance: `current` (spendable) + `lifetime` (all-time earned) + `redeemed` + `expired`
+
+[Open Customers](/dashboard/customers)
+
+---
+
+## 4. Test the Flow
+
+1. Enroll a test customer
+2. Place an order at the POS or storefront for them
+3. Open **Customers > [test customer] > Loyalty tab** and confirm points were earned per your rule
+4. Apply their card ID at checkout and redeem points — confirm the discount lands
+
+If points didn't earn: check the rule's status (`active`?), conditions (min amount, category match?), and the customer's tier — they may need to be enrolled or active.
+
+---
+
+## What's next?
+
+- [Members](/commerce-bd/docs/loyalty/members) — view balance, history, adjust points manually
+- [Earning Rules](/commerce-bd/docs/loyalty/earning-rules) — deep dive on rule design
+- [Tiers](/commerce-bd/docs/loyalty/tiers) — qualification, benefits, downgrade grace
+- [Redemption](/commerce-bd/docs/loyalty/redemption) — how points convert to discounts
+- [Referrals](/commerce-bd/docs/loyalty/referrals) — two-sided rewards for refer-a-friend

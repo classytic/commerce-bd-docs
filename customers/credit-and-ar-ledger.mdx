@@ -1,0 +1,156 @@
+---
+title: Customer Credit & A/R Ledger
+description: Enable credit terms, post opening balances, record payments, issue debit notes — the accounts receivable workflow
+---
+
+# Credit & A/R Ledger
+
+For B2B accounts that buy on credit (net-30, net-60, etc.) you need to:
+
+1. **Enable credit** with a limit and payment days
+2. Optionally **post an opening balance** if migrating from another system
+3. **Issue invoices** that post to the A/R ledger automatically
+4. **Record payments** as they come in
+5. **Watch the aged buckets** to chase overdue customers
+
+[Open Customers](/dashboard/customers)
+
+---
+
+## Step 1 — Enable Credit
+
+On the customer profile, scroll to the **Credit Terms** card:
+
+- Toggle **Credit enabled** on
+- Set **Credit limit** in BDT (leave blank for unlimited — not recommended)
+- Set **Credit days** (e.g. `30` for net-30)
+- Click **Save**
+
+The card warns: *"Limit: X BDT. Invoices over cap will be rejected at post time."* This is a real enforcement — see below.
+
+> Credit limit enforcement requires `ENABLE_CREDIT_LIMIT=true` on the backend. Confirm with your platform admin if invoices aren't being blocked as expected.
+
+---
+
+## How the Limit Enforces
+
+When a credit-sale invoice is about to post, the system checks:
+
+```
+outstanding A/R balance + new invoice amount  ≤  credit limit
+```
+
+If not, the invoice **rejects** with an error like:
+> Invoice would push customer over credit limit (BDT 60,000 of 50,000)
+
+The invoice stays in `draft` status — fix it by:
+- Reducing the invoice amount
+- Receiving a payment first to free up credit
+- Raising the customer's limit (if approved by finance)
+
+Cash sales aren't affected — only credit sales hit the limit.
+
+---
+
+## Step 2 — Post an Opening Balance (Migration Only)
+
+If this customer already owes you money from before you went live:
+
+1. Customer profile → **A/R Ledger** tab
+2. Click **Opening Balance** at the top
+3. Enter the amount in BDT + a reference (e.g. "Pre-go-live balance from QuickBooks")
+4. Save
+
+The system posts a journal entry: **DR A/R 1210**, **CR Retained Earnings 3310**. It's **idempotent** — clicking the button twice does nothing the second time. Safe to retry.
+
+You only do this **once per customer**. Subsequent invoices accumulate normally.
+
+---
+
+## The A/R Ledger Tab
+
+This tab is your accounts-receivable cockpit for the customer. Top to bottom:
+
+### Balance Summary
+
+Four cards: **Opening**, **Closing**, **Open items total**, **Matched total**. The closing minus matched equals what's still owed and unpaid.
+
+### Open Invoices
+
+Every unpaid invoice with: invoice number, date, due date, amount, days overdue. Two actions per row:
+
+- **Receive Payment** — record a payment (see next section)
+- **Debit Note** — issue an allowance / partial credit (e.g. "we shipped wrong color, BDT 500 off")
+
+### Statement Table
+
+Full ledger entries — every JE that touched A/R for this customer, in order, with running balance. Use the date range picker at the top to narrow the period.
+
+### Aged Buckets
+
+Color-coded breakdown:
+- **0–30 days** (current — green)
+- **30–60 days** (chase soon — yellow)
+- **60–90 days** (chase now — orange)
+- **90+ days** (collections concern — red)
+
+Use this for credit-control conversations: "You have BDT 12,000 in 90+ days bucket — when can we expect payment?"
+
+---
+
+## Step 3 — Record a Payment
+
+When the customer pays:
+
+1. Open the customer's A/R Ledger tab
+2. On the open invoice they're paying, click **Receive Payment**
+3. Enter:
+   - **Amount received** in BDT
+   - **Payment method** — cash, bank transfer, bKash, etc.
+   - **Reference** — the bank reference / wallet TXN ID
+   - **Date received** (defaults to today)
+4. Save
+
+The system:
+- Posts a JE: **DR Cash/Bank**, **CR A/R 1210**
+- Marks the invoice as **paid** (full) or **partially paid** (if amount < invoice total)
+- The closing balance drops by the payment amount
+
+For payments that cover **multiple invoices** at once, you can either:
+- Record them one-at-a-time (simplest)
+- Use **batch settlement** (if your account team has set it up) — match a single bank deposit to N invoices
+
+---
+
+## Issue a Debit Note (Customer Owes You More)
+
+For situations where the customer owes additional money (e.g. you under-billed):
+
+1. Open the customer's A/R Ledger tab
+2. Click **Debit Note** on the relevant invoice
+3. Enter:
+   - **Amount** in BDT
+   - **Reason** (required — appears in the audit trail)
+   - **Reference** (optional, e.g. an internal ticket number)
+4. Save
+
+A debit note **adds to** the customer's A/R balance. The opposite is a **credit note** — see [Credit & Debit Notes](/commerce-bd/docs/accounting/credit-debit-notes) for the full pattern.
+
+---
+
+## Common Pitfalls
+
+| Symptom | Cause + fix |
+|---------|-------------|
+| Invoice fails to post: "would exceed credit limit" | Customer is at the cap. Receive a payment first or raise the limit. |
+| Opening balance dialog won't save | A previous opening balance already exists. Idempotent — safe to ignore. |
+| Aged buckets look wrong | Check the date range filter at the top; "today" is the as-of date for aging. |
+| Customer says they paid, ledger shows owing | Search by reference number on the customer's statement. If not there, the payment was logged to the wrong customer or never posted. |
+
+---
+
+## What's next?
+
+- [Credit & Debit Notes](/commerce-bd/docs/accounting/credit-debit-notes) — full pattern across both sides
+- [Accounting Daily Operations](/commerce-bd/docs/accounting/daily-operations) — recording payments at scale
+- [Suppliers — A/P Ledger](/commerce-bd/docs/suppliers/ap-ledger) — same workflow on the payable side

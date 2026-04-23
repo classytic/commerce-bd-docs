@@ -1,0 +1,164 @@
+---
+title: Supplier Profile & Tax Setup
+description: BIN, fiscal positions, truncated VAT rates, bonded warehouse — Bangladesh NBR compliance flags on each vendor
+---
+
+# Profile & Tax Setup
+
+Bangladesh tax compliance flows through the supplier profile. The fields below decide which GL accounts your bills post to, whether you can claim input VAT credit, and how exports vs domestic differ.
+
+[Open Suppliers](/dashboard/suppliers)
+
+---
+
+## Standard Profile Fields
+
+Editable from **Edit** on the supplier profile:
+
+| Field | Notes |
+|-------|-------|
+| **Name** | Required. Unique among active suppliers. |
+| **Code** | Auto-generated `SUP-XXXX`. Permanent. |
+| **Type** | `local` / `import` / `manufacturer` / `wholesaler` |
+| **Contact person + phone + email** | For procurement coordination |
+| **Address** | Free-text |
+| **Tax ID** | Their generic tax identifier (NID, TIN, BIN) |
+| **Payment terms** | `cash` (immediate) or `credit` (net-N) |
+| **Credit days** | If credit: 0–365 |
+| **Credit limit** | If credit: cap on outstanding |
+| **Opening balance (scalar)** | Reference value only — see [Opening Balance](/commerce-bd/docs/suppliers/opening-balance) for the actual JE post |
+| **Tags** | Free-form labels |
+| **Notes** | Internal-only |
+
+---
+
+## Bangladesh Tax Flags
+
+These four fields drive how purchase bills post to the GL.
+
+### 1. BIN (Business Identification Number)
+
+The 13-digit NBR identifier (e.g. `123456789-0101`). Required for VAT-registered suppliers.
+
+- **If your supplier is VAT-registered**, fill this in. Their bills post with input VAT credit (your VAT receivable goes up).
+- **If not registered**, leave blank. The bill posts gross with no input credit.
+
+The system validates the format — wrong shape (not 13 digits, not in the standard pattern) gets rejected at save.
+
+### 2. Fiscal Position Code
+
+Picklist that controls posting rules:
+
+| Value | Meaning |
+|-------|---------|
+| `NATIONAL` | Standard domestic vendor (default behavior) |
+| `INTERNATIONAL` | Cross-border — different VAT and customs treatment |
+| `null` (blank) | No special rules — same as NATIONAL |
+
+For **import vendors**, set `INTERNATIONAL`. The accounting engine then routes bills through the import VAT + customs duty pathway.
+
+### 3. Truncated Rate Supplier
+
+Toggle. When **on**, the supplier charges a **truncated VAT rate** (5%, 7.5%, or 10%) instead of the standard 15%.
+
+NBR rule: with truncated VAT, you **cannot claim input credit**. Instead, the tax is rolled into the **inventory cost** at receipt. The accounting engine handles this automatically when the flag is on:
+
+- Bill amount = goods + truncated VAT (no separate VAT line on receivable)
+- Inventory value = goods + VAT (cost is higher)
+- Mushak 9.1 input section excludes this supplier's VAT
+
+Use for: any supplier whose Mushak 6.3 invoices show a non-standard VAT rate.
+
+### 4. Bonded Warehouse Supplier
+
+Toggle. For RMG (ready-made garment) exporters who import raw materials into a **bonded warehouse**.
+
+When on: VAT is **deferred** (not paid on import) using GL account `1150.VAT0.INPUT`. Released only when the goods exit the bonded warehouse into a Domestic Tariff Area sale (rare for pure exporters).
+
+Only relevant for export-licensed RMG operations. Leave off if you're not in that business.
+
+### 5. Country Code
+
+ISO country code, e.g. `BD`, `CN`, `IN`. Default `null` = unspecified.
+
+- `BD` — domestic vendor
+- Anything else — flagged as foreign / import vendor for reports + potential customs treatment
+
+If you set `INTERNATIONAL` fiscal position but leave country code blank, the system still treats them as foreign — but reports look cleaner with the country filled in.
+
+---
+
+## Worked Example: A Local IT Reseller
+
+Local Bangladesh vendor, VAT-registered, charges standard 15%, accepts net-30 payment.
+
+```
+Type: local
+BIN: 123456789-0101
+Fiscal position: NATIONAL  (or blank)
+Truncated rate: off
+Bonded warehouse: off
+Country: BD
+Payment terms: credit
+Credit days: 30
+Credit limit: 200000
+```
+
+Their bills post: **DR Inventory/Expense**, **DR VAT Receivable 1150**, **CR A/P 2111**. You get input credit on Mushak 9.1.
+
+---
+
+## Worked Example: Truncated-Rate Trader
+
+Local trader for stationery, charges 5% truncated VAT (no input credit).
+
+```
+Type: local
+BIN: <if registered, fill in; else blank>
+Fiscal position: NATIONAL
+Truncated rate: ON
+Bonded warehouse: off
+Country: BD
+Payment terms: cash
+```
+
+Their bills post: **DR Inventory/Expense (gross — VAT inside cost)**, **CR A/P 2111**. No VAT receivable line. Mushak 9.1 input section skips this supplier.
+
+---
+
+## Worked Example: RMG Bonded Importer
+
+Foreign yarn supplier, imports into a bonded warehouse for an export-only RMG factory.
+
+```
+Type: import
+BIN: <usually blank — foreign>
+Fiscal position: INTERNATIONAL
+Truncated rate: off
+Bonded warehouse: ON
+Country: CN
+Payment terms: credit
+Credit days: 90
+```
+
+Their bills post: **DR Inventory**, **DR Deferred VAT 1150.VAT0.INPUT**, **CR A/P 2111**. The VAT only releases if/when the goods are sold domestically (rare).
+
+---
+
+## Common Pitfalls
+
+| Symptom | Cause + fix |
+|---------|-------------|
+| Bill posts but no input VAT credit | Supplier is flagged truncated-rate. Correct? If yes, behavior is right. If no, untoggle the flag. |
+| Mushak 9.1 missing this supplier's VAT | Same as above — truncated-rate suppliers don't appear in input section |
+| Import vendor's bills posting to domestic accounts | Fiscal position is blank or NATIONAL. Set to INTERNATIONAL. |
+| BIN field rejects with format error | Must be 13 digits in the NBR-published format. Double-check the supplier's certificate. |
+
+---
+
+## What's next?
+
+- [A/P Ledger](/commerce-bd/docs/suppliers/ap-ledger) — pay bills + issue credit notes
+- [Opening Balance](/commerce-bd/docs/suppliers/opening-balance) — one-shot migration JE
+- [VAT Basics](/commerce-bd/docs/accounting/vat-basics) — how the tax flags translate to GL entries
+- [Importer Basics](/commerce-bd/docs/accounting/importer-basics) — full import VAT walkthrough

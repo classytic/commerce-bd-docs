@@ -1,0 +1,134 @@
+# VAT Basics — How It Works Here
+
+A quick, plain-language tour of how VAT flows through the system. Written for shop staff, not accountants.
+
+---
+
+## The short version
+
+Every sale and purchase touches VAT automatically. You don't calculate anything by hand — the system handles it. Your job is to know where it appears so you can check it's right and fix it when it's wrong.
+
+---
+
+## The four things that happen
+
+### 1. You sell something at the POS
+
+When a cashier rings up a sale:
+
+- Customer pays the full price (VAT included).
+- The system **splits** the amount into revenue + VAT internally.
+- VAT goes to account **2132 — VAT Output Payable** (money you owe NBR).
+- Revenue goes to account **4111 — Domestic Sales**.
+
+You don't do anything extra. It's automatic.
+
+### 2. You receive a purchase from a supplier
+
+When stock arrives and you mark the purchase as **received**:
+
+- Inventory goes up by the **net** amount (price before VAT).
+- The **input VAT** portion goes to account **1150 — VAT Input Receivable** (NBR owes this back to you as a credit).
+- Accounts Payable (2111) goes up by the **full** amount (what you owe the supplier).
+
+> **Tip:** If the supplier didn't give you a Mushak 6.3 invoice, you cannot claim input VAT. Make sure purchase entries have a `taxRate` set only when you have the paper.
+
+### 3. You transfer stock between your own branches
+
+Same company, different branches (same BIN) is **not a sale** to NBR. The system creates a **Mushak 6.5 transfer challan**, not a VAT invoice.
+
+- No VAT event. No output VAT. No input VAT.
+- Stock just moves from branch A to branch B.
+- Cost layers follow the stock.
+
+Different legal entities (different BIN) **is** a sale. Those use Mushak 6.3 with VAT.
+
+### 4. Month ends — you file Mushak 9.1
+
+Go to **Accounting → VAT Return (9.1)** on the 1st–15th of the next month.
+
+- The system adds up all your output VAT (from sales).
+- Subtracts your input VAT credit (from purchases).
+- Shows **Net Payable**.
+- You pay that amount to NBR by the 15th.
+
+[Open VAT Return](/dashboard/accounting/vat-return)
+
+---
+
+## VAT rates you'll see
+
+| Rate | Use it for | Input credit? |
+|------|------------|----------------|
+| **15% (STANDARD)** | Most goods and services | Yes |
+| **7.5% (REDUCED_7_5)** | Non-AC restaurant, RMG retail | No |
+| **10%, 5%** | Specific sectors per SRO | No |
+| **0% (ZERO)** | Exports, EPZ supplies | Yes (refundable) |
+| **EXEMPT** | Fresh veg, medicine, education | No |
+
+> **Remember:** Only 15% and 0% rates let you claim input credit. If your supplier invoices you at 7.5%, that VAT becomes part of your inventory cost — you can't get it back.
+
+---
+
+## The Mushak 6.3 invoice (VAT invoice)
+
+Every sale over BDT 1 lakh to a VAT-registered buyer **must** have a Mushak 6.3. It's the tax invoice.
+
+### Who issues it?
+- **POS orders** — you click Generate Mushak on the order detail page.
+- **Online orders** — same.
+- **Manual** — for invoices outside the order system.
+
+### Serial format
+`BRANCHCODE/YYYY/000001` — sequential per branch per year, no gaps allowed by NBR.
+
+### If it's wrong
+Don't delete. **Cancel it** (on the list page). The serial stays reserved; a cancelled invoice doesn't count toward your output VAT. Issue a new one if needed.
+
+[View Mushak 6.3 invoices](/dashboard/accounting/musok)
+
+---
+
+## Common "why is this happening?" questions
+
+### "Why did my net payable jump this month?"
+You either sold more (output VAT up) or received fewer purchase invoices (input credit down). Check the **Input VAT Credit** number on the VAT Return page — if it's lower than usual, go find missing purchases.
+
+### "My supplier gave me VAT but the system shows 0 input credit."
+Three common causes:
+1. The purchase was entered with `taxRate: 0` by mistake. Fix on the purchase page before receiving.
+2. The rate is a truncated one (7.5%, 5%, 10%) — these don't allow input claim by law.
+3. The purchase wasn't marked "received" yet. The accounting entry fires on **receive**, not on create.
+
+### "I sold something but it's not on the VAT return."
+- Check the Mushak 6.3 was generated (go to Musok list, search by order number).
+- Check its status isn't **cancelled** — cancelled invoices are excluded.
+- Check the date matches the return period (sale on April 1 goes on April return, not March).
+
+### "A cashier voided a sale. What happens?"
+A refund journal entry is posted automatically — output VAT goes **down** in 2132 for that amount. The original Mushak 6.3 can also be cancelled (recommended for audit trail).
+
+---
+
+## What staff can override
+
+You can, with the right role:
+
+- **Cancel** a Mushak 6.3 — `finance_admin` or `admin`.
+- **Edit purchase taxRate** before marking it received — `inventory_staff` or higher.
+- **Regenerate** a Mushak 6.3 for the same order — idempotent, returns the original if already exists.
+
+You cannot:
+
+- Post directly to VAT accounts (2132, 1150). All VAT entries must come from sales/purchases/refunds.
+- Skip a Mushak serial number. If you cancel invoice 42, the next one is 43 (42 stays cancelled).
+- Change rates after a sale is posted. Fix by cancelling the Mushak and issuing a new one.
+
+---
+
+## Where to go when you need more
+
+- [Full VAT Return dashboard](/dashboard/accounting/vat-return) — the 19-line Mushak 9.1 view
+- [Musok invoice list](/dashboard/accounting/musok) — all VAT invoices
+- [Daily Operations guide](/dashboard/accounting/learn/daily-operations) — day-close workflow
+- [Credit & Debit Notes guide](/dashboard/accounting/learn/credit-debit-notes) — for returns and adjustments

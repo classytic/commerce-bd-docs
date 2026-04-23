@@ -1,0 +1,118 @@
+---
+title: Supplier Opening Balance
+description: One-shot journal entry to migrate pre-go-live payables — idempotent, safe to retry
+---
+
+# Opening Balance
+
+If you owe a supplier money from **before you went live** on BigBoss, you need to capture that as an **opening balance** so your A/P ledger reconciles from day one.
+
+This is a **one-time** action per supplier. After the opening balance is posted, all subsequent bills accumulate normally.
+
+[Open Suppliers](/dashboard/suppliers)
+
+---
+
+## Two Fields, Two Behaviors
+
+The supplier profile has an `openingBalance` numeric field (under Edit). And the A/P Ledger tab has an **Opening Balance** button. They're **different things**:
+
+| | Profile field | A/P Ledger button |
+|---|---|---|
+| **What it does** | Stores a scalar reference number on the supplier record | Posts an actual journal entry to the GL |
+| **Affects accounting?** | No | Yes — DR Retained Earnings, CR A/P |
+| **Visible on the ledger?** | No | Yes — first line of the statement |
+| **Idempotent?** | N/A — just a field | Yes — second click is a no-op |
+| **When to use** | Migration metadata only ("they owed us 50k at go-live") | Always — this is the real accounting record |
+
+> **Always use the A/P Ledger button for the actual JE.** The profile field is informational only — it does NOT create a journal entry. A note on the profile spells this out.
+
+---
+
+## Post an Opening Balance — The Right Way
+
+1. Open the supplier → **A/P Ledger** tab
+2. Click **Opening Balance** at the top
+3. Enter:
+   - **Amount** in BDT (what you owe them as of go-live)
+   - **As-of date** — typically your go-live date (the system uses today by default; override to your migration date)
+   - **Reference** — e.g. "Pre-go-live balance from QuickBooks export 2026-04-01"
+4. Save
+
+The system posts:
+
+```
+DR  Retained Earnings (3310)
+CR  Accounts Payable    (2111)   amount: BDT N
+```
+
+The opening balance line appears at the top of the supplier's statement table with a "Opening Balance" tag.
+
+---
+
+## Idempotent — Safe to Retry
+
+Click **Opening Balance** twice and the second click does **nothing**. The system uses a **dedup key** of (supplier ID + side + opening-balance type) — once posted, the dialog returns the original JE id without creating a duplicate.
+
+The dialog tells you this: *"Idempotent — if one already exists for this partner, the request is a no-op."*
+
+This means:
+
+- Network glitches → safe to retry
+- Migration script crashes mid-run → re-run, no double-post
+- Two finance staff click at the same time → only one wins, no duplicate
+
+---
+
+## What If the Opening Balance Is Wrong?
+
+You can't edit a posted opening balance directly — the JE is locked. To correct:
+
+1. Post a **debit note** (or credit note, depending on direction) for the difference
+2. Add a clear reason: "Correction to opening balance — original BDT 50,000 should have been BDT 45,000"
+3. The combination opens-balance + correction nets to the right number
+
+This preserves the audit trail — a future auditor sees the original and the correction, not a silent overwrite.
+
+---
+
+## Bulk Migration Pattern
+
+Migrating 100+ suppliers at go-live? Don't do it manually — script it via the API:
+
+```
+for each supplier in your old-system export:
+  POST /api/v1/inventory/suppliers      ← create supplier
+  POST /api/v1/accounting/posting/opening-balance {
+    partnerType: 'supplier',
+    partnerId: <newId>,
+    amount: <fromOldSystem>,
+    asOfDate: '2026-04-01',
+    reference: `Migration from <old system>`,
+  }
+```
+
+Because the opening-balance endpoint is idempotent, you can re-run the script after fixing data issues without worrying about duplicates.
+
+---
+
+## Reconcile After Migration
+
+Once all opening balances are posted:
+
+1. Run a **trial balance** report (Accounting > Reports)
+2. Compare your total A/P to your old system's total A/P at the cut-off date
+3. They should match exactly. If not:
+   - One or more suppliers got missed in the import
+   - Or the amounts you imported didn't match the old system
+4. Add missing suppliers + opening balances; correct mismatched ones via debit/credit notes
+
+Don't go live with subscriptions, customer orders, or POS sales until the trial balance reconciles.
+
+---
+
+## What's next?
+
+- [A/P Ledger](/commerce-bd/docs/suppliers/ap-ledger) — daily payable operations after migration
+- [Accounting Getting Started](/commerce-bd/docs/accounting/getting-started) — broader migration checklist
+- [Customers — Opening Balance](/commerce-bd/docs/customers/credit-and-ar-ledger) — same pattern, A/R side

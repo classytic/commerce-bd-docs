@@ -1,0 +1,148 @@
+---
+title: CRM Loss Reasons
+description: The required taxonomy for closed-lost opportunities — design it well and your funnel reports become actionable
+---
+
+# Loss Reasons
+
+When an opportunity closes as **lost**, the system **requires** a loss reason. This page covers why and how to design a useful taxonomy.
+
+> Dashboard UI is in development. Loss reasons can be created today via the SDK / REST API.
+
+---
+
+## Why Loss Reasons Are Mandatory
+
+Without a structured reason, "lost deals" data is noise:
+
+- 100 opportunities lost last quarter
+- 100 reasons in free-text notes
+- Zero ability to spot patterns
+
+With a structured reason picker:
+
+- 100 opportunities lost last quarter
+- 30 lost on **Price**, 20 on **Competitor**, 15 on **Timing**, 10 on **No-budget**, 25 other
+- Now you have an actionable view: "Cut price 5% → recover 30% of lost deals"
+
+The system enforces this at the API level — `POST /crm/opportunities/:id/action { action: 'lose' }` returns 400 without a `lostReasonId`.
+
+---
+
+## A Good Starter Taxonomy
+
+8–12 reasons is the sweet spot. Too few = everyone picks "other"; too many = nobody picks consistently.
+
+| ID | Name | When to use |
+|----|------|-------------|
+| `lr_price` | Price too high | Customer rejected on price |
+| `lr_competitor` | Lost to competitor | Picked another vendor |
+| `lr_timing` | Wrong timing | Right product, wrong moment |
+| `lr_no_budget` | No budget | Customer can't fund this year |
+| `lr_no_decision` | No decision | Customer went silent / froze |
+| `lr_no_authority` | Wrong contact | Champion couldn't sell internally |
+| `lr_product_gap` | Product gap | We don't do feature X they need |
+| `lr_quality_concern` | Quality concern | Trust / reliability blocker |
+| `lr_relationship` | Relationship issue | Pre-existing vendor with deeper ties |
+| `lr_other` | Other | Catch-all — keep < 10% of total |
+
+Keep `lr_other` low (target < 10%). High `lr_other` means your taxonomy is missing a real pattern — analyze the free-text notes on those losses and add the missing reasons.
+
+---
+
+## Anatomy
+
+| Field | Meaning |
+|-------|---------|
+| **Name** | Display label (e.g. "Price too high") |
+| **Code** | Stable identifier for reports (e.g. `price`) |
+| **Active** | Toggle — when off, no new selections allowed; existing references unaffected |
+| **Description** | Optional — one-sentence guidance for the sales rep on when to pick this |
+
+Example:
+```
+{
+  name: 'Price too high',
+  code: 'price',
+  active: true,
+  description: 'Customer cited cost as the primary blocker. Use this even if there were secondary concerns.',
+}
+```
+
+---
+
+## Create / Update / Archive
+
+```
+POST   /api/v1/crm/loss-reasons          ← create
+GET    /api/v1/crm/loss-reasons          ← list (filter: active=true)
+PATCH  /api/v1/crm/loss-reasons/:id      ← update
+```
+
+Set `active: false` to retire a reason — historical data still references it, but nobody can pick it for new losses.
+
+There's no DELETE endpoint by design. Once a loss reason exists, deleting it would break historical reports. Archive instead.
+
+---
+
+## Branch Scoping
+
+Loss reasons are **per-branch**. Each branch has its own taxonomy because losing patterns differ across markets:
+
+- A retail branch might have `lr_walked_in_browsing` (window shopper)
+- An enterprise branch wouldn't ever use that — they have `lr_procurement_block`
+
+The unique constraint is `(organizationId, code)` — codes must be unique within a branch but can repeat across branches.
+
+---
+
+## Reporting on Loss Reasons
+
+Critical questions a sales manager should answer with this data:
+
+**1. Where is the funnel leaking?**
+```
+GET /crm/opportunities?status=lost&closedAt>=Q1&groupBy=lostReasonId
+```
+Top 3 reasons = your biggest fixable problems. Address them in priority order.
+
+**2. Is reason X getting better or worse?**
+Group by `lostReasonId` AND month → look for trend lines. A spike in `lr_competitor` = competitive market shift.
+
+**3. Are different reps losing for different reasons?**
+Group by `lostReasonId` AND `ownerId` → coaching opportunities. Rep losing 80% on `lr_no_authority` needs help getting to decision-makers.
+
+**4. What's the dollar impact of each reason?**
+Sum `amount` per `lostReasonId` → "we left BDT 5M on the table this quarter on `lr_price`". That number drives pricing strategy.
+
+---
+
+## Anti-Patterns
+
+| What you might do | Why it backfires |
+|-------------------|------------------|
+| 30+ specific reasons ("budget under 50k", "budget under 100k", "budget under 200k", …) | Reps pick whichever is on top of the dropdown. Use one `lr_no_budget` and put dollar amount in the opportunity's `amount`. |
+| Single `lr_misc` | Defeats the purpose. The whole point is differentiation. |
+| Editing the **name** of a reason mid-quarter | Reports get confused — reason "Price" suddenly doubles when "Cost" is renamed. Lock the taxonomy at quarter start. |
+| Creating per-product reasons | Use `metadata` on the opportunity, not a new loss reason. The taxonomy should be product-agnostic. |
+
+---
+
+## Tying It Back
+
+Loss reason data only matters if it changes behavior. A simple loop:
+
+1. Each Friday, run the loss-reason report for the week
+2. Look at the #1 reason
+3. Ask: "Could we have prevented this?"
+4. If yes, change something next week (price page, demo flow, qualification script)
+5. Re-measure next Friday
+
+If you can't answer "what action did we take based on last quarter's loss data?" — your loss reasons are decorative, not actionable.
+
+---
+
+## What's next?
+
+- [Opportunities](/commerce-bd/docs/crm/opportunities) — where loss reasons get applied
+- [Pipelines](/commerce-bd/docs/crm/pipelines) — designing stages so losses surface early, not late

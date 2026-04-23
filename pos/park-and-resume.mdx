@@ -1,0 +1,119 @@
+---
+title: Park & Resume Orders
+description: Save a cart in progress so you can ring up another customer, then return to the parked order later
+---
+
+# Park & Resume
+
+Customer at the counter asks to run back to their car. Another customer is waiting. You don't want to lose the first cart's items, discount, loyalty lookup. **Park** it.
+
+---
+
+## How it works
+
+Each cashier can park **up to 5 orders** simultaneously. Parked orders live in the browser's localStorage for the current shift, scoped to the active branch. Each one preserves:
+
+- Cart items (products, variants, quantities)
+- Customer selection (name, phone, membership card)
+- Manual discount / voucher code state
+
+When you resume, the cart loads exactly as you left it. Pricing re-runs against the current catalog at resume time — if a product was re-priced since park, the resumed cart shows the new price.
+
+---
+
+## Park an order
+
+From the products screen with a cart in progress:
+
+1. Click **Park** in the cart panel (or type the shortcut if wired on your install)
+2. Optional: give it a **label** to find it later (e.g. "red shirt lady")
+3. Confirm
+
+The cart clears, you're back on products ready for the next customer. The parked order appears in the **Parked** menu in the top bar with a counter (e.g. "Parked (2)").
+
+---
+
+## Resume a parked order
+
+1. Top bar → **Parked** menu
+2. Click the order you want — cart refills
+3. Continue — add items, checkout, or further modify
+
+Resuming **moves** the parked order into the active cart — it's removed from the parked list. If you park the resumed cart again, it becomes a new entry (so labels may differ).
+
+---
+
+## Delete a parked order
+
+From the **Parked** menu, click the ✕ next to an order. Gone. No confirmation for a single delete — it's a quick action.
+
+**Clear all** at the bottom of the menu wipes all parked orders at once (this one does confirm).
+
+---
+
+## Five-slot limit
+
+The 6th park attempt fails with **"Maximum 5 parked orders. Resume or delete one first."**
+
+Why the cap: parked orders in localStorage add up — each can carry dozens of cart lines with full product snapshots. 5 is the limit that keeps performance tight and the Parked menu scannable.
+
+If you're hitting the limit regularly, that's a workflow signal. Either resume faster, or your store has a queueing problem that parking can't solve.
+
+---
+
+## Expiry — 8 hours
+
+Parked orders auto-expire **8 hours after park** (a typical shift length). The next time you open the Parked menu after expiry, stale ones are purged silently.
+
+Why: parked cart's product prices, promos, and stock may have shifted overnight. Auto-expiry prevents yesterday's ghost sale from showing up today. If you genuinely need to save a cart longer, take a photo of the screen — don't rely on park.
+
+---
+
+## What parking does NOT do
+
+| Not this | Do this instead |
+|---|---|
+| Save an order across shifts | Complete the sale, or have the customer return tomorrow |
+| Reserve stock | Park doesn't decrement inventory. If a parked cart holds the last item, another cashier can still sell it. |
+| Share across terminals | Parked orders are per-browser. Log in on another terminal and you won't see them. |
+| Park with partial payment | Parking is for pre-payment carts. After any tender, the order is real — refund it if the customer walks out. |
+
+---
+
+## Common use cases
+
+- **Customer stepped away** — ring up others while they return
+- **Need to fetch an item from the back** — park, serve next customer, resume when back
+- **Product lookup in progress** — you're finding the right SKU for a tricky request; park the current cart while you search
+- **Comparing options** — customer is deciding between two products; park a cart with option A, build a cart with option B, show them side-by-side receipts
+
+---
+
+## Troubleshooting
+
+**"My parked orders disappeared"**
+- You cleared browser storage, used incognito, or logged into a different user
+- Parked orders are per-browser, per-user, per-branch
+- No recovery path — parking is volatile by design
+
+**"A parked order shows the wrong price"**
+- Pricing runs at resume time, not at park time
+- If the product was re-priced between park and resume, the new price shows
+- The item list itself (which products, what qty, which variant) is preserved
+
+**"Can I park an order with a redeemed voucher?"**
+- Yes — the voucher code is preserved in the parked cart
+- On resume, the voucher re-validates (still active? still within expiry?) — if it fails, a warning shows and the discount drops
+
+---
+
+## Permissions
+
+Anyone with POS access can park + resume their own orders. There's no role gate — parking is a cashier convenience, not a financial action.
+
+---
+
+## Related
+
+- [Taking Sales](/pos/taking-sales) — the normal cart-to-payment flow
+- [Troubleshooting](/pos/troubleshooting) — more common POS issues

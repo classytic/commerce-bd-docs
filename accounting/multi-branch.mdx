@@ -1,0 +1,62 @@
+# Multi-Branch Accounting
+
+Your company has one set of books, shared across all branches. This page explains how that works.
+
+## One chart, many branches
+
+Every branch — head office, retail stores, factories, warehouses — shares the **same chart of accounts**. Account codes like 1111 (Cash), 4111 (Sales Revenue), and 2132 (VAT Payable) are company-wide. You do not need to create separate accounts per branch.
+
+## How branches are tagged
+
+Every journal entry carries a **branch tag** — the branch that created it. This tag is automatic; you never enter it manually. It comes from whichever branch you are logged into when the transaction happens.
+
+- A POS sale at the Dhaka outlet → tagged "Dhaka"
+- A vendor bill paid by the Chittagong warehouse → tagged "Chittagong"
+- A manual journal entry by the head office accountant → tagged "Head Office"
+
+## Per-branch reports
+
+When you open any report (Trial Balance, Income Statement, Balance Sheet), it shows **your branch's data by default**. The system reads your active branch from the top-left branch switcher.
+
+To see another branch's data (if you have permission), use the **Branch** filter on the report page.
+
+## Consolidated (company-wide) reports
+
+Superadmins and finance managers can run **consolidated reports** that aggregate all branches. Leave the branch filter blank — the report sums everything.
+
+This is how the head office reviews company-wide performance:
+
+| Report | Per-branch use | Consolidated use |
+|--------|---------------|-----------------|
+| Trial Balance | Branch cashier verifying daily totals | CFO reviewing company-wide balances |
+| Income Statement | Branch manager checking monthly revenue | Board presentation on company P&L |
+| Balance Sheet | Not commonly used per-branch | Standard company-wide financial statement |
+| A/P Aging | Branch accountant following up on vendor bills | Finance team reviewing total payables |
+| A/R Aging | Branch accountant chasing customer payments | Finance team reviewing total receivables |
+
+## Budgets are per-branch
+
+Unlike accounts and fiscal periods, **budgets are created per branch**. Each branch manager sets their own revenue and expense targets. Budget vs Actual reports compare actuals (tagged journal entries) against each branch's budget.
+
+## Day-close is per-branch
+
+Each branch closes its own day independently. Closing the day at the Dhaka outlet does not affect the Chittagong warehouse. The head office can view all branches' day-close status on the **Branch Oversight** page.
+
+## Different business types, same books
+
+Your company might have branches with different NBR business types:
+
+- A retail outlet (Standard VAT 15%)
+- An RMG factory (zero-rated exports, bonded warehouse)
+- An IT wing (5% ITES rate)
+
+They all post to the same chart of accounts. The difference is **which VAT accounts** each transaction hits — the system handles this automatically based on the branch's business type setting.
+
+## Inter-branch transfers
+
+When stock moves between branches (e.g., warehouse to retail outlet), the system creates journal entries in **both** branches:
+
+- Sending branch: debit Inter-Branch Receivable, credit Inventory
+- Receiving branch: debit Inventory, credit Inter-Branch Payable
+
+These entries cancel out in consolidated reports, showing the true company-wide inventory position.

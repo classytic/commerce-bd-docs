@@ -1,0 +1,152 @@
+---
+title: Variants & SKUs
+description: Add size, color, and other variant axes to a product — each with its own SKU and stock
+---
+
+# Variants & SKUs
+
+A **variant** is a specific configuration of a product — "Cotton Crew T-Shirt, Size M, Color Red". Each variant gets its own SKU, its own stock count per branch, and (optionally) its own price.
+
+[Open Products](/dashboard/products)
+
+---
+
+## When to Use Variants
+
+Use variants when the **same product** comes in multiple options that customers pick:
+
+- T-shirt: Size (XS/S/M/L/XL) × Color (Red/Blue/Green)
+- Coffee: Size (Small/Medium/Large) × Roast (Light/Dark)
+- Shoes: Size (38/39/40/...) × Width (Narrow/Regular/Wide)
+
+If the products are genuinely different (different brands, different SKUs in your old system), make them separate products instead. Variants share most attributes (description, base price, images, tax category) — only differ on the variant axes.
+
+---
+
+## Define Variation Attributes
+
+Before adding variants, declare which **axes** the product varies on.
+
+1. Open the product → **Variants** tab
+2. **Variation attributes** section → click **Add Attribute**
+3. For each axis:
+   - **Name** — e.g. "Size" or "Color"
+   - **Values** — e.g. ["XS", "S", "M", "L", "XL"]
+
+Common patterns:
+
+| Product type | Typical axes |
+|--------------|--------------|
+| Apparel | Size, Color |
+| Electronics | Capacity (32GB/64GB), Color |
+| Food | Size (Small/Large), Flavor |
+| Beauty | Shade, Size |
+
+You can have 1, 2, or 3 axes. More than 3 gets unwieldy fast — usually a sign you should split into separate products.
+
+---
+
+## Generate Variants
+
+After defining attributes, click **Generate Variants**. The system creates one variant for every combination:
+
+- Size [S, M, L] × Color [Red, Blue] → 6 variants:
+  - Red-S, Red-M, Red-L, Blue-S, Blue-M, Blue-L
+
+Each variant lands as a row in the variants table, ready to fill in details.
+
+If you don't want every combination (e.g. you don't carry "Red XL"), delete that row. The system doesn't auto-fill — once deleted, it stays gone unless you regenerate.
+
+---
+
+## Variant Fields
+
+Each row has:
+
+| Field | Notes |
+|-------|-------|
+| **Attributes** | The axis values (e.g. Size: M, Color: Red) — read-only after creation |
+| **SKU** | Unique. Auto-suggested from product SKU + attribute codes (e.g. `TSHIRT-RED-M`); editable. |
+| **Barcode** | Variant-specific barcode for POS scanning |
+| **Price modifier** | Delta from base price (`+50` adds 50 BDT for this variant) |
+| **Price override** | Absolute price (replaces base entirely — useful for "XL costs more") |
+| **Cost price** | Per-variant wholesale cost (visible to finance only) |
+| **Active** | Toggle — inactive variants hide from sale but keep history |
+| **Image** | Optional variant-specific image (e.g. shows the actual color) |
+
+Use either `priceModifier` OR `priceOverride`, not both. If both are set, override wins.
+
+---
+
+## SKU is the Inventory Join Key
+
+This is the most important variant fact:
+
+> The variant's SKU is what the **inventory system uses to track stock**.
+
+When a customer buys "Red-M", the inventory system decrements the SKU `TSHIRT-RED-M` at their branch. When you receive a purchase from a supplier, you receive against the same SKU. Stock counts in audits — same SKU.
+
+Implications:
+
+- **SKUs must be unique across the catalog.** The system enforces this on save.
+- **Don't change a variant SKU after stock exists.** Stock would orphan to the old SKU. If you must rename, do it via finance with a stock transfer to the new SKU.
+- **Stock-take reports** (per-branch, per-SKU) all key off variant SKU.
+
+For **products without variants**, the product itself has a single SKU that plays the same role.
+
+---
+
+## Per-Branch Stock
+
+Once you've created variants, stock for each one is **per-branch**:
+
+```
+Branch A:
+  TSHIRT-RED-M:  50 in stock
+  TSHIRT-RED-L:   8 in stock
+  TSHIRT-BLUE-M:  0 in stock (out of stock at A)
+
+Branch B:
+  TSHIRT-RED-M:   3 in stock (low)
+  TSHIRT-RED-L: 100 in stock
+  TSHIRT-BLUE-M: 25 in stock
+```
+
+The catalog page on the storefront and POS shows variants greyed out / hidden when zero at the active branch. Same product, different availability per location.
+
+For multi-branch transfers between locations, see [Branch Transfers](/commerce-bd/docs/inventory/transfers).
+
+---
+
+## Active vs Inactive Variants
+
+The `active` toggle on each variant controls visibility:
+
+- **Active** — appears in storefront, POS, search
+- **Inactive** — hidden from sale, kept in history
+
+Use inactive when:
+- You're discontinuing a size/color but might bring it back (e.g. seasonal)
+- You have stock you want to sell down but don't want new orders (e.g. EOL)
+- You made a variant by mistake (preferred over delete, which loses audit)
+
+---
+
+## Common Pitfalls
+
+| Symptom | Cause + fix |
+|---------|-------------|
+| Stock count is 0 but I have inventory | The stock is on a different SKU. Check inventory → search by product, see which SKU has the units. |
+| New variant created, no stock visible | Run **Sync Stock** at the product level — fetches current stock per branch. |
+| Customer scans barcode, wrong variant adds | Two variants share a barcode. Edit one to use a unique code. |
+| Price doesn't match what I set | Price modifier vs override conflict. Or a [promotion / loyalty tier](/commerce-bd/docs/promotions/programs) is auto-discounting. Check the cart breakdown. |
+| Bulk import created duplicate variants | The import didn't dedupe by SKU. Re-run with `upsert: true` or clean up manually. |
+
+---
+
+## What's next?
+
+- [Categories](/commerce-bd/docs/products/categories) — group products by taxonomy
+- [Size Guides](/commerce-bd/docs/products/size-guides) — attach measurement charts
+- [Daily Stock Management](/commerce-bd/docs/inventory/daily-stock) — manage variant stock per branch
+- [Branch Transfers](/commerce-bd/docs/inventory/transfers) — move variants between branches

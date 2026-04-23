@@ -1,0 +1,168 @@
+---
+title: Product Reviews
+description: Customer ratings + comments — moderation workflow, replies, verified purchases, average rating
+---
+
+# Reviews
+
+Customers rate products 1–5 stars and leave comments. Reviews go through a **moderation workflow** before appearing publicly, and admins can reply to each one.
+
+> The dashboard list view of all reviews is in development. For now, reviews are managed per-product (from the product detail page) or via the API.
+
+---
+
+## What a Review Holds
+
+| Field | Meaning |
+|-------|---------|
+| **Rating** | 1–5 stars (required) |
+| **Title** | Short headline (e.g. "Comfortable, runs small") |
+| **Comment** | Body of the review |
+| **Author** | The customer who wrote it (linked to Customers module) |
+| **Verified purchase** | True if the customer's order history includes this product |
+| **Helpful count** | Other customers' "this was helpful" votes |
+| **Status** | `pending`, `approved`, or `rejected` |
+| **Reply** | Optional admin response (content + repliedAt timestamp) |
+
+---
+
+## Lifecycle
+
+```
+Customer writes review  →  status: pending
+                              ↓
+Moderator reviews          ┌──────────────┐
+                           ↓              ↓
+                       approved       rejected
+                           ↓              ↓
+                   Shows on storefront   Hidden, customer informed (optional)
+                           ↓
+            Counts toward average rating
+```
+
+By default, reviews start in `pending`. Some businesses configure auto-approve (skip moderation entirely) — most retailers leave it on for spam protection.
+
+---
+
+## Approve a Review
+
+1. Open the product → **Reviews** tab
+2. Find the pending review
+3. Click **Approve**
+
+The review is now visible on the storefront. Its rating counts toward the product's `stats.averageRating` (recalculated on every approve/delete).
+
+---
+
+## Reject a Review
+
+For spam, abusive language, or off-topic content:
+
+1. Open the product → **Reviews** tab
+2. Click **Reject** on the bad review
+3. Optionally add a private note for audit ("Spam — repeated phrase")
+
+Rejected reviews:
+- Don't appear on the storefront
+- Don't count toward average rating
+- Stay in the database for audit + future re-review
+
+You can re-approve a rejected review later if needed.
+
+---
+
+## Reply to a Review
+
+Admins (and customer-service roles) can reply publicly to any **approved** review:
+
+1. Open the review → **Reply** button
+2. Type your reply (markdown supported)
+3. Save
+
+The reply appears under the review on the storefront with a "Store reply" badge. Use replies to:
+
+- Thank customers for positive feedback
+- Address concerns in negative reviews ("Sorry to hear about the size — we're updating our chart")
+- Provide product-use tips ("Try washing on cold to preserve color")
+
+Replying to a review **auto-approves it** if it was still pending.
+
+---
+
+## Verified Purchases
+
+The `verifiedPurchase` flag is set automatically when:
+
+- The author's customer record has a completed order containing this product
+- The order is `delivered` or `paid` status (not pending/cancelled)
+
+Verified reviews carry more weight on the storefront — they typically display a **green checkmark** badge. Customers trust them more.
+
+For pre-launch reviews (e.g. press, influencers reviewing before launch), you can manually set `verifiedPurchase: true` via the API — but most stores keep this strict to avoid trust erosion.
+
+---
+
+## Average Rating + Distribution
+
+The product's `stats.averageRating` is the mean of all approved reviews (1.0–5.0).
+
+Some storefront UIs also show the **distribution**:
+
+```
+5 stars: ████████░░ 80% (40 reviews)
+4 stars: ██░░░░░░░░ 15% (8)
+3 stars: ░░░░░░░░░░  3% (1)
+2 stars: ░░░░░░░░░░  2% (1)
+1 star:  ░░░░░░░░░░  0% (0)
+```
+
+This helps customers understand if the average is consistent (mostly 5★) or polarized (lots of 5★ AND 1★).
+
+---
+
+## Helpful Votes
+
+Customers can mark reviews as "helpful" via the storefront. The `helpfulCount` increments each time. Sort the review list by helpfulness to surface the most useful reviews first — typically more useful than chronological order.
+
+The system tracks who voted to prevent duplicate votes from the same customer.
+
+---
+
+## Common Patterns
+
+**"Auto-approve known good customers"** — possible with custom logic: check if author's customer has > N approved past reviews → auto-approve. Configure with your platform admin.
+
+**"Email customers when their review is approved"** — wire up via the events bus (`product:review.approved` event → notification). Useful for engagement, optional.
+
+**"Negative reviews need management response"** — internal SLA: any review ≤ 2★ requires a reply within 48 hours. The reply doesn't need to fix the issue, just acknowledge and offer next steps.
+
+---
+
+## Reporting
+
+Common queries (via API or dashboard):
+
+- **Pending review backlog** — `?status=pending` count → moderation queue size
+- **Average rating per product** — sort products by `stats.averageRating` desc
+- **Low-rated products** — `?stats.averageRating<3` to find candidates for review or delisting
+- **Verified vs unverified ratio** — measure trust signal strength
+- **Reply rate** — % of approved reviews that have a reply (proxy for customer-service engagement)
+
+---
+
+## Common Pitfalls
+
+| Symptom | Cause + fix |
+|---------|-------------|
+| Average rating doesn't match what I'm seeing | Average uses only approved reviews. Pending/rejected don't count. |
+| Customer wrote a review but I don't see it | Filter the Reviews tab by status — it's likely `pending`. |
+| Verified-purchase flag missing on a real customer | Their customer record might not be linked to the order. Check the order's customerId. |
+| Spam reviews accumulating | Disable auto-approve, train moderators, consider rate limiting per IP/customer |
+
+---
+
+## What's next?
+
+- [Variants & SKUs](/commerce-bd/docs/products/variants-and-skus) — what customers are reviewing
+- [Customers](/commerce-bd/docs/customers/getting-started) — author identity and history
+- [Categories](/commerce-bd/docs/products/categories) — bulk-rate products in a category

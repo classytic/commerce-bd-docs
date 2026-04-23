@@ -1,0 +1,169 @@
+---
+title: Cash Movements
+description: Mid-shift cash in / cash out — safe drops, petty cash, deposits, corrections, all logged with reason codes
+---
+
+# Cash Movements
+
+Cash enters and leaves the drawer between the float and the close count. Every movement is logged — not just the amount, but **why** it happened. That's how the Z-report ties out at end of day.
+
+---
+
+## The seven reason codes
+
+Shopify-style reason taxonomy. Each movement carries one:
+
+| Code | Direction | Use when |
+|---|---|---|
+| `safe_drop` | Out | Excess cash moved from drawer to safe for security (hourly drops, end-of-shift prep) |
+| `bank_deposit` | Out | Cash handed to a bank courier or taken to the bank mid-shift |
+| `petty_cash` | Out | Operating expense paid from drawer — office supplies, staff lunch, delivery fee |
+| `owner_withdrawal` | Out | Owner or manager took cash personally (loan to till, personal withdrawal) |
+| `till_top_up` | In | More change brought in because drawer ran low on small notes |
+| `correction` | Either | Fixing a prior mistake (miscount, wrong tender entered on a past sale) |
+| `other` | Either | Anything that doesn't fit. **Note is required.** Use sparingly — reason-code analytics are only useful when codes fit reality. |
+
+Your branch policy can **restrict** which codes are permitted. If `safe_drop` is the only allowed out-code, the UI hides the others. See [Shift Policies](/pos/shift-policies) for the `allowedReasonCodes` setting.
+
+---
+
+## Recording a movement
+
+From any POS screen with a shift open:
+
+1. Top bar → **Cash** menu
+2. Pick **Cash In** or **Cash Out**
+3. Select a reason code from the dropdown
+4. Enter amount
+5. Optional **Note** — required if reason is `other`, strongly recommended for `correction`
+6. Confirm
+
+The movement posts immediately. The expected cash figure (used at close) adjusts automatically.
+
+---
+
+## Worked example — mid-shift safe drop
+
+Shift opened with ৳1,000. After 3 hours, drawer has ৳18,500 (float + ৳17,500 cash sales). Store policy says keep no more than ৳10,000 in the drawer for security.
+
+**Cashier**:
+1. Count ৳8,500 to drop
+2. Cash menu → Cash Out
+3. Reason: `safe_drop`
+4. Amount: `8500`
+5. Note: "To safe — box 3"
+6. Confirm
+
+**After the drop**:
+- Drawer physical: ৳10,000
+- Shift expected cash recomputed: ৳18,500 - ৳8,500 = ৳10,000 ✓
+- Movement logged in shift record with timestamp + cashier + reason
+
+At close: expected cash = opening + (cash sales - cash refunds) + (cash in) - (cash out). If everything was recorded, actual equals expected, variance is zero.
+
+---
+
+## Worked example — till top-up
+
+Drawer is low on ৳100 notes after a busy hour of ৳500 and ৳1,000 tenders.
+
+**Cashier** grabs ৳2,000 in hundreds from the safe:
+1. Cash menu → Cash In
+2. Reason: `till_top_up`
+3. Amount: `2000`
+4. Confirm
+
+Expected cash goes UP by ৳2,000 (matching the physical reality). At close, the cashier counts drawer + any drops; the math reconciles.
+
+---
+
+## Worked example — correction
+
+Cashier realizes an earlier sale was tendered as cash but the customer actually paid by bKash. They already tried to find the customer — can't reach them. The ৳500 is sitting in the drawer as unearned cash.
+
+**Cashier**:
+1. Cash menu → Cash Out (they want to remove ৳500 from expected drawer to match physical will-be)
+2. Reason: `correction`
+3. Amount: `500`
+4. Note: "Order PO-4312 was tendered as cash in error — actual payment was bKash trxID 01234567. ৳500 removed to stay with physical cash."
+
+A manager reviewing the Z-report sees the correction, the note, and can tie it back to the original sale. The variance is zero despite the bookkeeping drama.
+
+> Corrections are an audit smell. Occasional ones are fine. If your shifts have many, retrain on payment-method selection at tender — don't accept "correction" as a workaround for sloppy data entry.
+
+---
+
+## Impact on expected cash
+
+Every movement adjusts the running expected-cash figure:
+
+```
+expected = opening
+         + Σ(cash sales)
+         − Σ(cash refunds)
+         + Σ(cash in movements)
+         − Σ(cash out movements)
+```
+
+At close, the cashier counts actual drawer cash; variance = actual − expected. Missing movements show up as variance — the cashier's log-this-now discipline is what keeps variance at zero.
+
+---
+
+## Where movements land in accounting
+
+Depends on the reason code:
+
+| Reason | GL posting (when day is closed) |
+|---|---|
+| `safe_drop`, `bank_deposit` | Dr 1112 Bank / Safe, Cr 1111 Cash in Hand |
+| `till_top_up` | Dr 1111 Cash in Hand, Cr 1112 Safe |
+| `petty_cash` | Dr (relevant expense account), Cr 1111 Cash in Hand |
+| `owner_withdrawal` | Dr 3200 Owner's Drawings, Cr 1111 Cash in Hand |
+| `correction` | Posts both sides based on note and manager review (non-auto) |
+| `other` | No auto-posting — manual adjustment required |
+
+The POS records the movement; accounting picks it up on day-close via the shift → GL bridge. If a reason code has no auto-posting rule (`correction`, `other`), the manager has to create the journal entry manually from the accounting side. That's intentional — we don't want to guess.
+
+---
+
+## Per-branch restrictions
+
+Branch policy can lock this down:
+
+- **Disallow `other`** — force everyone to pick a defined code
+- **Disallow `owner_withdrawal`** — owner cash must go through accounting, not POS
+- **Require manager auth for any outflow** — cashier can't drain the till without a manager's PIN
+
+Configured under [Shift Policies](/pos/shift-policies) → `allowedReasonCodes` and the separate manager-override flag.
+
+---
+
+## Reporting
+
+**Reports → POS → Cash Movements** shows:
+
+- Every movement across all shifts, filterable by branch / reason / cashier / date
+- Totals per reason code (useful to spot-check: are safe drops reasonable? Is petty cash eating margin?)
+- Export to CSV for external audit
+
+Combine with the **Z-Report** per shift to see movements in the context of that shift's opening + sales.
+
+---
+
+## Permissions
+
+| Action | Who |
+|---|---|
+| Record cash in (any reason) | `cashier`, `store-staff`, `branch_manager`, `admin` |
+| Record cash out (`safe_drop`, `bank_deposit`, `till_top_up`) | `cashier`, `store-staff`, `branch_manager`, `admin` |
+| Record cash out (`petty_cash`, `owner_withdrawal`) | `branch_manager`, `admin` (some branches: cashier with manager-auth) |
+| Record `correction` | `branch_manager`, `admin` only |
+| View movement reports | `branch_manager`, `admin`, `superadmin` |
+
+---
+
+## Related
+
+- [Closing Shift & Reports](/pos/closing-shift-and-reports) — how movements factor into Z-report variance
+- [Shift Policies](/pos/shift-policies) — restricting reason codes per branch
+- [Daily Operations](/accounting/daily-operations) — how shift totals roll into day close in accounting

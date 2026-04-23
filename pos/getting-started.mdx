@@ -1,0 +1,137 @@
+---
+title: POS — Getting Started
+description: The point-of-sale terminal — shifts, registers, drawer reconciliation, and integration with the rest of the platform
+---
+
+# Getting Started
+
+The POS terminal is what your **cashiers use at the counter** — fullscreen interface, optimized for speed, designed to work on touch devices and barcode scanners.
+
+[Open the POS terminal](/pos)
+
+---
+
+## What the POS Does
+
+A POS shift wraps a cashier's work session at one branch:
+
+```
+1. OPEN SHIFT  →  cashier enters opening cash (the float)
+2. TAKE SALES  →  scan products, accept payments, print receipts
+3. CLOSE SHIFT →  count drawer, record variance, end shift
+```
+
+Behind the scenes, every sale becomes a real **order** in the system — same orders that show up on `/dashboard/orders`, that decrement stock, that post to the GL. The POS is just a fast cashier-facing UI on top of the universal order engine.
+
+---
+
+## Five Concepts
+
+| Concept | Meaning |
+|---------|---------|
+| **Shift** | A cashier's work session at one branch. Open → in-progress → closed. |
+| **Register** | The physical or virtual POS terminal. One register hosts one shift at a time. |
+| **Drawer** | Cash holding area. Float at open, sales add to it, refunds subtract. |
+| **Float** | Opening cash (e.g. BDT 1,000) so the cashier can make change from the first sale. |
+| **Variance** | At close: actual cash counted minus expected cash. Zero is perfect; anything else is investigated. |
+
+---
+
+## Shift Rules
+
+**One open shift per branch per cashier.** If the cashier tries to open a second shift while one is open, the system returns "shift already open" and shows the existing shift. They must close it first.
+
+**Shifts are not editable after closing.** Once closed, the cash variance + Z-report data is locked. Treat it like a printed receipt — corrections happen via cash journal entries, not by editing the shift.
+
+**One shift per cashier per day** (typical). Some businesses run multiple shifts (morning + evening) — that works fine. Each is its own session with its own opening/closing cash.
+
+---
+
+## Two Reports You'll See
+
+| Report | When | Purpose |
+|--------|------|---------|
+| **X-Report** | Mid-shift (any time) | "How am I doing right now?" — shows sales count, revenue, expected cash so far |
+| **Z-Report** | At shift close | The official shift summary — opening, sales, refunds, expected cash, actual cash, variance |
+
+The X-report doesn't end the shift — pull it whenever you want a checkpoint. The Z-report is generated automatically when you close.
+
+---
+
+## Common First Tasks
+
+| Task | Where |
+|------|-------|
+| Open the POS | Click **POS** in the sidebar OR navigate directly to `/pos` |
+| Start your day | Click **Open Register** → enter opening cash |
+| Sell something | Search a product, scan a barcode, or pick from category — adds to cart |
+| Take payment | Click **Checkout** → pick cash / bKash / card → confirm amount |
+| Apply a discount | Cart screen → **Discount** button (manager auth required for large %) |
+| Apply a voucher | Cart screen → enter the voucher code in the **Promo** field |
+| Look up a customer | **Customer** field at top of cart → search by name/phone or scan loyalty card |
+| Refund a previous sale | **F9** to open Order History → find the order → **Refund** |
+| Park an order for later | Click **Park** in the cart (saves for up to 8 hours — see [Park & Resume](/pos/park-and-resume)) |
+| Mid-shift cash movement | **Cash** menu in the top bar → pick reason → amount (see [Cash Movements](/pos/cash-movements)) |
+| End your day | Top bar → **Close Register** → enter actual cash count → confirm variance |
+
+---
+
+## Keyboard Shortcuts
+
+The POS is keyboard-driven for speed. Shortcuts are grouped by screen — the right keys only work on the screen they apply to.
+
+**Global (any POS screen)**
+
+| Key | Action |
+|-----|--------|
+| **Esc** | Go back one screen (payment → products, products → idle, etc.) |
+| **F9** | Open the Order History drawer |
+
+**Products screen (building a cart)**
+
+| Key | Action |
+|-----|--------|
+| **F3** | Focus the product search field |
+| **F4** | Focus the barcode input |
+| **F5** | Open the Customer Lookup dialog |
+| **Enter** | Confirm the focused action (add product, select variant, etc.) |
+
+**Payment screen**
+
+| Key | Action |
+|-----|--------|
+| **F8** | Toggle Split payment mode |
+| **Esc** | Back to products (cart is preserved) |
+
+**Receipt screen**
+
+| Key | Action |
+|-----|--------|
+| **F2** | Start a new sale |
+| **Ctrl+P** / **⌘+P** | Print the receipt |
+
+If you have a barcode scanner, just scan — it auto-types into whichever input has focus (the cart barcode input by default).
+
+> Closing a shift uses the **Close Register** button in the top bar — deliberate, no hotkey. Prevents accidental end-of-day closes.
+
+---
+
+## Multi-Channel — One Customer, All Records
+
+When a customer who's already in the system buys at the POS:
+
+- The POS scans their loyalty card (or you search by phone)
+- Sales attach to their existing customer record
+- Their **lifetime revenue + order count + loyalty balance** all update
+- Their **online and POS history** are unified — same identity
+
+If they're new, the POS creates a customer record on the fly (using phone if provided, else a placeholder). Same dedup rules as in the [Customers module](/commerce-bd/docs/customers/getting-started).
+
+---
+
+## What's next?
+
+- [Opening a Shift](/commerce-bd/docs/pos/opening-shift) — the float, drawer setup, manager check
+- [Taking Sales](/commerce-bd/docs/pos/taking-sales) — cart, payments, discounts, refunds, loyalty
+- [Closing Shift & Reports](/commerce-bd/docs/pos/closing-shift-and-reports) — cash count, variance, Z-report, accounting
+- [Troubleshooting](/commerce-bd/docs/pos/troubleshooting) — common issues and fixes

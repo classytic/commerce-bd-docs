@@ -1,0 +1,121 @@
+---
+title: Suppliers — Getting Started
+description: Manage vendors — local, import, manufacturer, wholesaler — with payment terms, A/P ledger, and Bangladesh tax compliance flags
+---
+
+# Getting Started
+
+The Suppliers module is your **vendor master** — the companies you buy from. Each supplier carries contact info, payment terms, an A/P ledger, and Bangladesh-specific tax compliance flags.
+
+[Open Suppliers](/dashboard/suppliers)
+
+---
+
+## Add Your First Supplier
+
+1. **Suppliers** → **Add Supplier**
+2. Fill in:
+   - **Name** (required, 2–100 chars)
+   - **Contact person** + **phone** (BD format `01XXXXXXXXX`)
+   - **Email** + **address** (optional)
+   - **Type** — `local`, `import`, `manufacturer`, or `wholesaler`
+   - **Payment terms** — `cash` or `credit`
+   - **Credit days** — 0–365 (e.g. 30 = net-30)
+   - **Credit limit** — optional cap on outstanding payable
+3. Click **Create**
+
+The system auto-generates a **supplier code** like `SUP-0001`. The code is permanent — never editable.
+
+---
+
+## Supplier Types — When to Use Which
+
+| Type | Use for |
+|------|---------|
+| **Local** | Bangladesh vendors, normal VAT treatment |
+| **Import** | Foreign vendors — bills you under import VAT, customs duty handling |
+| **Manufacturer** | Producers / factories you buy raw materials from |
+| **Wholesaler** | Distributors / wholesalers — typically credit accounts |
+
+Type is informational + drives accounting category logic. The actual tax behavior comes from the [tax flags](/commerce-bd/docs/suppliers/profile-and-tax) (truncated rate, bonded warehouse, fiscal position).
+
+---
+
+## What Happens on Create
+
+- A **supplier record** is created in the master list (visible to all branches)
+- The system reserves a **supplier code** from the global counter (`SUP-XXXX`)
+- An audit log entry is created: who, when, with what fields
+- The `supplier:created` event fires (used by reporting + integrations)
+
+You don't need to manually create an A/P ledger — it opens automatically when the **first bill** for this supplier is posted.
+
+---
+
+## Suppliers Are Company-Wide (Not Branch-Scoped)
+
+Unlike customers (per-branch), the supplier master is **shared across the whole company**. Every branch sees the same vendor list. This makes sense because:
+
+- A vendor delivering to multiple branches is one legal relationship
+- Centralized procurement teams manage suppliers, not branch managers
+- The opening balance posts at the company level, not per-branch
+
+That said, **purchase bills are branch-scoped** — when branch A buys from a supplier, the bill is tagged to branch A. The A/P ledger on the supplier profile aggregates bills across all branches but you can filter by branch in reports.
+
+---
+
+## Quick Tour of the Supplier Profile
+
+Click any supplier → two tabs:
+
+### Profile tab
+- All the fields you set on create
+- Editable inline via the **Edit** sheet
+- Tax compliance flags (BIN, fiscal position, truncated rate, bonded warehouse)
+- Tags + notes
+
+### A/P Ledger tab
+- Opening balance dialog (one-shot for migration)
+- Date range filter
+- Balance summary cards
+- Open bills with **Pay Bill** + **Credit Note** actions
+- Full statement table
+- Aged buckets (0–30, 30–60, 60–90, 90+ days)
+
+[See A/P Ledger guide →](/commerce-bd/docs/suppliers/ap-ledger)
+
+---
+
+## Common First Tasks
+
+| Task | Where |
+|------|-------|
+| Add an import vendor | **Suppliers > Add Supplier** — type `import`, set country code, BIN if applicable |
+| Set credit terms | Profile → **Edit** → toggle credit, set credit days + limit |
+| Post pre-go-live opening balance | **A/P Ledger tab > Opening Balance** |
+| Mark vendor as truncated-rate (5%/7.5%/10% VAT) | Profile → toggle **Truncated Rate Supplier** |
+| Mark vendor as bonded warehouse (RMG raw material) | Profile → toggle **Bonded Warehouse Supplier** |
+| Deactivate a vendor you no longer use | Actions menu on the list → **Deactivate** |
+
+---
+
+## Deactivation, Not Deletion
+
+The **Delete** action is a **soft delete** — sets `isActive = false`. This is intentional:
+
+- Bills, payments, journal entries stay linked
+- Historical reports still show their contributions
+- The supplier's name is freed up — a different supplier can use it
+
+There's no hard-delete UI. If you genuinely need to purge a vendor (GDPR, etc.), do it via direct DB access with finance approval.
+
+Reactivation isn't currently exposed in the UI — once deactivated, the supplier stays inactive.
+
+---
+
+## What's next?
+
+- [Profile & Tax Setup](/commerce-bd/docs/suppliers/profile-and-tax) — BIN, fiscal positions, truncated rate, bonded warehouse
+- [A/P Ledger](/commerce-bd/docs/suppliers/ap-ledger) — bills, payments, credit notes, aged buckets
+- [Opening Balance](/commerce-bd/docs/suppliers/opening-balance) — migrating existing payables
+- [Permissions](/commerce-bd/docs/suppliers/permissions) — who can do what

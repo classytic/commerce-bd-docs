@@ -1,0 +1,104 @@
+---
+title: Loyalty Members
+description: Enroll customers, view balances, adjust points manually, and manage member status
+---
+
+# Members
+
+Every loyalty participant is a **member** with their own card ID, referral code, balance, and tier.
+
+---
+
+## Enroll a Customer
+
+Go to **Customers > [customer name] > Loyalty tab** and click **Enroll**. The system generates:
+
+- **Card ID** — formatted like `MBR-DHK-00004821-8` (branch code + sequence + check digit). This is what the POS scans at checkout.
+- **Referral code** — 8 random characters (e.g. `K7P2-N9X4`). Different from the card ID — used for referrals only.
+
+The customer immediately has a balance of `0` and is in the lowest active tier.
+
+[Open Customers](/dashboard/customers)
+
+> **Self-enrollment** also works — customers click **Join Loyalty** on the storefront. The dashboard view is the admin-side fallback.
+
+---
+
+## View Member Details
+
+The Loyalty tab on a customer profile shows:
+
+| Field | What it means |
+|-------|---------------|
+| **Card ID** | The barcode/string for POS scanning |
+| **Status** | `active`, `inactive`, or `suspended` |
+| **Tier** | Current tier name and rank |
+| **Tier expiry** | When this tier review happens; auto-extends as long as qualification holds |
+| **Current balance** | Spendable points |
+| **Lifetime earned** | All points ever earned (never decreases) |
+| **Redeemed** | Total points spent on discounts |
+| **Expired** | Points that aged out before being used |
+
+The **History** panel below shows a paginated transaction ledger — every earn, redeem, adjust, expire, transfer, and referral bonus, in reverse chronological order.
+
+---
+
+## Manually Adjust Points
+
+For one-off corrections (e.g. customer service goodwill, bug compensation):
+
+1. Open the member's Loyalty tab
+2. Click **Adjust Points**
+3. Enter a positive number to add, negative to subtract
+4. Add a **reason** (required — appears in the audit trail)
+5. Save
+
+The adjustment shows up as a `adjust` transaction with your user ID logged. There's no undo — to reverse a mistake, do another adjustment with the opposite sign and a corrective reason.
+
+---
+
+## Suspend or Reactivate
+
+If a member abuses the program (e.g. fraudulent referrals, bot signups):
+
+1. Open the member's Loyalty tab
+2. Click **Deactivate** or **Suspend**
+
+A `suspended` member:
+- **Cannot earn** new points (rules skip them)
+- **Cannot redeem** existing balance
+- Keeps their card ID, balance, history (so you can investigate or restore)
+
+Click **Reactivate** to restore full member status. The balance is intact — nothing is forfeited automatically.
+
+---
+
+## Tier Override (Admin)
+
+For VIPs or promotional boosts, you can manually lock a member into a tier regardless of their qualification:
+
+1. Open the member's Loyalty tab
+2. Click **Set Tier Override**
+3. Pick a tier and write a reason (e.g. "Loyal partner since 2018, manual lock")
+4. Save
+
+While the override is in place:
+- Auto-tier evaluation is skipped for this member
+- Only an admin can clear it (click **Clear Override**)
+- The override + reason appear in the audit trail
+
+[Open Tiers](/dashboard/loyalty/tiers)
+
+---
+
+## Search by Card ID
+
+The POS scans a member's card ID and looks them up via `GET /loyalty/members/by-card/:cardId`. From the dashboard, just type the card ID into the **Customers** search bar — the matching member surfaces with their loyalty data attached.
+
+---
+
+## What's next?
+
+- [Earning Rules](/commerce-bd/docs/loyalty/earning-rules) — design the point-earning logic
+- [Tiers](/commerce-bd/docs/loyalty/tiers) — qualification thresholds and benefits
+- [Redemption](/commerce-bd/docs/loyalty/redemption) — how members spend points

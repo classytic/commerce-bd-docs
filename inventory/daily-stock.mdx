@@ -41,6 +41,24 @@ When stock doesn't match reality (damage, theft, recount):
 
 Every adjustment is recorded in the **Movements** page with who made it and why.
 
+### Per-line location
+
+`locationId` is optional on both the top-level body and on each item inside `adjustments[]`. Omit it and the adjustment lands in the branch's default `stock` bin. Supply a sub-location `_id` (storage type, active) to target a specific aisle / bin. Virtual locations (`vendor`, `customer`, `adjustment`) and inactive bins are rejected with 4xx.
+
+```http
+POST /api/v1/inventory/adjustments
+{
+  "productId": "...",
+  "variantSku": "TSHIRT-RED-M",
+  "quantity": 7,
+  "mode": "set",
+  "locationId": "<sub-location _id, optional>",
+  "reason": "Cycle count — Aisle A"
+}
+```
+
+`mode` is `set` (absolute) | `add` (increase) | `remove` (decrease). For bulk: pass an `adjustments[]` array — each item can carry its own `locationId` overriding the top-level value.
+
 ---
 
 ## View Stock Movements

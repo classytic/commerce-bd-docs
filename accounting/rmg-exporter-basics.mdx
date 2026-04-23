@@ -1,0 +1,72 @@
+# RMG exporter basics
+
+You operate an export-oriented garments factory with a bonded-warehouse
+licence. NBR gives you special treatment: zero-rated exports, deferred
+VAT on imported raw material, and utility VAT exemption.
+
+## The three things that make you different
+
+### 1. Raw material imports → bonded warehouse
+
+When fabric/yarn arrives at customs, VAT is **deferred** (not exempt —
+just postponed). It stays deferred as long as the material is consumed
+to produce exported garments. This is how your Utilization Declaration
+(UD) works.
+
+- Customs posts the import to `1154 Deferred Input VAT` (when we
+  implement bonded-warehouse posting — currently the stack uses `1150.VAT15.INPUT`).
+- On export, no VAT event.
+- On DTA (domestic) sale of the same material — VAT triggers retrospectively.
+
+### 2. Exports are zero-rated
+
+- Customer country ≠ BD → system auto-remaps `STANDARD` → `ZERO_EXPORT`
+  via the INTERNATIONAL fiscal position.
+- The invoice still posts — just with 0% VAT.
+- Input VAT you paid on utilities, office supplies, etc. is **refundable**
+  through the 1150.VAT0.INPUT account (see `/dashboard/accounting/export-refund`).
+
+### 3. Utility VAT exemption (SRO-190/2023)
+
+Gas, electricity, and telecom suppliers who serve your factory are
+exempt from charging VAT on those utilities. When the supplier issues a
+bill flagged as "utility → RMG factory", the system applies the
+RMG_UTILITY fiscal position — no VAT line.
+
+**You still need to keep copies of those bills.** The SRO requires proof.
+
+## What the system does automatically
+
+- **Foreign-buyer invoice**: fiscal position = INTERNATIONAL, VAT = 0%,
+  line on 1150.VAT0.INPUT accumulates a refund claim.
+- **Domestic sale (DTA)**: full 15% VAT charged. Separate tracking so
+  bonded-warehouse UD reconciliation works.
+- **Utility bill**: detect via `suppliesUtility: true` + `buyer.isRmgFactory`
+  → RMG_UTILITY fiscal position, no VAT charged.
+- **Monthly return**: Mushak 9.1 with zero-rated sales called out on line 7.
+
+## Audit trail
+
+Every exemption leaves a record on the Mushak invoice:
+- `fiscalPosition`: which remap applied
+- `sroReference`: SRO-190/2023 (utility), export manifest (foreign sale)
+- `exemptionReason`: plain-text human log
+
+NBR audits RMG exporters heavily — this trail is load-bearing.
+
+## Common questions
+
+**Can I buy domestic raw material?**
+Yes — but the VAT on that purchase is claimable as regular input VAT
+(1150.VAT15.INPUT), not deferred. You claim it back through your
+monthly return.
+
+**What if export shipment is cancelled and sold domestically?**
+DTA sale — posts at 15% VAT, the deferred/export-refund adjustments
+need manual entry. Talk to your CA.
+
+## Related
+
+- [Business types](business-types.md)
+- [VAT basics](vat-basics.md)
+- [Importer basics](importer-basics.md) — relevant for non-bonded imports

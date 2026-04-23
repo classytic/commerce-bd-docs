@@ -1,0 +1,81 @@
+# Roles & Permissions Reference
+
+Who can do what across the platform.
+
+---
+
+## Quick Map
+
+| Action | Required role |
+|--------|---------------|
+| Edit Platform Config | `superadmin` or `admin` |
+| Create / edit / delete users | `superadmin` only |
+| Read user list, view profiles | `superadmin` or `admin` |
+| Create branches | `superadmin` or `admin` |
+| Edit branches | `superadmin` or `admin` |
+| Switch into a branch | Branch membership |
+| Update own profile (`/me`) | Any authenticated user |
+
+---
+
+## Platform Config
+
+Two levels of access:
+
+- **`superadmin` / `admin`** can `GET` and `PATCH` `/platform/config`. They see and edit payment methods, VAT, store settings.
+- **Authenticated** users can `GET /platform/permissions/matrix` — used by the dashboard to render correct permission UIs.
+
+Non-admin users get **403 Forbidden** if they try to PATCH config. The form simply doesn't show up in their navigation.
+
+---
+
+## Users Resource
+
+| Endpoint | Required role | Notes |
+|----------|---------------|-------|
+| `GET /users` | `superadmin` or `admin` | Lists all users; not branch-scoped |
+| `GET /users/:id` | `superadmin` or `admin` | Read any user |
+| `POST /users` | `superadmin` only | Create new user |
+| `PATCH /users/:id` | `superadmin` only | Change role, isActive, etc. |
+| `DELETE /users/:id` | `superadmin` only | Soft delete recommended |
+| `GET /users/me` | Any logged-in user | Own profile |
+| `PATCH /users/me` | Any logged-in user | Update own name / email |
+
+> **Why superadmin for write?** Creating staff accounts grants access to data — the system enforces the highest gate to prevent privilege escalation. Promote a trusted person to superadmin in **Settings > Users** if your owner can't always be available.
+
+---
+
+## Branches
+
+| Endpoint | Required role |
+|----------|---------------|
+| List, get, get-by-code, get-default | `superadmin` or `admin` |
+| Create, edit, delete, set-default | `superadmin` or `admin` |
+
+Switching INTO a branch (using the branch switcher) requires **branch membership**, which is independent of the system role. You can be a `superadmin` and still need to be added to a branch's member list to see its dashboard.
+
+---
+
+## System Roles vs. Branch Roles
+
+There are **two layers of roles** — they look similar but they're not the same:
+
+- **System role** (`role: ['admin']` on the user document) — platform-wide. Controls cross-branch resources like users, platform config, branches.
+- **Branch role** (`branch_manager`, `cashier`, etc. via Better Auth org membership) — branch-scoped. Controls per-branch resources like POS shifts, stock, fulfillment.
+
+A user can be `admin` at the platform level but `viewer` in a particular branch. Permissions are checked at both layers — the most restrictive wins.
+
+---
+
+## Forgotten Password / Locked Out?
+
+The system uses Better Auth for password resets. Hit the **Forgot Password** link on the login screen — you'll get an email with a reset link.
+
+If your superadmin account is locked out and no other superadmin exists, you'll need direct database access to reset the password.
+
+---
+
+## What's next?
+
+- [Users & Roles](/dashboard/platform/learn/users-and-roles) — how to assign these roles
+- [Branches](/dashboard/platform/learn/branches) — branch membership management

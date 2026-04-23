@@ -1,0 +1,102 @@
+# Send & Track a Quotation
+
+After you've created a draft, here's how to get it in front of the customer and follow up.
+
+---
+
+## Send the quote
+
+1. Open the draft from **Orders > Quotations**
+2. Click **Send to customer** (or use the row action menu on the list)
+3. Confirm the recipient
+
+The quote moves from **Draft** to **Sent**, and a `sentAt` timestamp is recorded.
+
+### What "send" actually does
+
+The send action **updates the quote's status**. How the customer receives it depends on your setup:
+
+- If your store has email configured, an email goes out automatically with the quote details
+- If not, the action is just a status change — you copy the quote link manually (WhatsApp, in-person printout, etc.)
+
+Either way, the quote status reflects that you've shared it. The customer-facing view becomes accessible.
+
+[Go to Quotations](/dashboard/quotations)
+
+---
+
+## Track viewed status
+
+A quote moves from **Sent** to **Viewed** when:
+
+- The customer opens the email link (if email tracking is on), OR
+- A staff member manually marks it as viewed (use the action menu — useful for in-person/phone quotes)
+
+The `viewedAt` timestamp tells you the exact moment. This is useful for follow-up — if a quote has been viewed but not accepted in 24-48 hours, that's a good prompt to call.
+
+You don't have to wait for "viewed" to accept — you can skip straight from sent to accepted.
+
+---
+
+## Mark as accepted
+
+When the customer agrees:
+
+1. Open the quote
+2. Click **Mark accepted**
+3. Confirm
+
+Status moves to **Accepted**, `acceptedAt` is recorded.
+
+The quote is now ready to convert into a real order. See [Convert a Quote to an Order](/dashboard/orders/learn/convert-to-order).
+
+### Approval chains (optional)
+
+Some businesses need an internal sign-off before a quote can be accepted (e.g., the sales manager approves discounts > 20%). When approvals are configured, the **Mark accepted** button is gated:
+
+- All required approvers must approve first
+- The approvals panel on the quote shows who has approved/skipped/is pending
+- If approval is required and not granted, the accept attempt fails with a clear error message
+
+Approval setup lives in **Settings > Approval Workflows** (admin-only).
+
+---
+
+## Mark as rejected
+
+If the customer declines:
+
+1. Open the quote
+2. Click **Reject**
+3. Enter a reason (price, timing, competitor, etc.)
+
+Status moves to **Rejected**, `rejectedAt` is recorded, and the reason is saved.
+
+**Rejected is terminal.** You can't un-reject. If the customer changes their mind:
+
+- Clone the quote (creates a new draft with the same lines)
+- Adjust price or terms based on what changed
+- Send the new quote
+
+This keeps a clean audit trail — both the original rejection and the new attempt are visible.
+
+---
+
+## Common follow-up patterns
+
+| Status | Suggested action |
+|---|---|
+| Sent — 24h | Confirm delivery (email landed? customer opened it?) |
+| Viewed — 48h, no response | Phone call follow-up |
+| Viewed — 7 days, no response | Soft nudge: "Anything blocking acceptance?" |
+| Accepted — same day | Convert to order, start fulfillment |
+| Expired | Reach out: "Still interested? We can refresh the quote." |
+
+Use the search and filter on the quotations list to find quotes by status and age. Sort by **last updated** to see what's been sitting.
+
+---
+
+## What's next?
+
+- [Convert a Quote to an Order](/dashboard/orders/learn/convert-to-order) — turn an accepted quote into a fulfillable order
+- [Expiry, Renewal & Cleanup](/dashboard/orders/learn/expiry-renewal) — handling stale quotes
